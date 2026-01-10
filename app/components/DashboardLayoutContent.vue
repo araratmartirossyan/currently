@@ -50,6 +50,8 @@ const breadcrumbs = computed(() => {
     return { title, url };
   });
 });
+
+const isTasksDashboardRoute = computed(() => route.path === "/");
 </script>
 
 <template>
@@ -159,7 +161,12 @@ const breadcrumbs = computed(() => {
       </div>
     </header>
 
-    <main class="bg-muted/10 flex flex-1 flex-col gap-4 p-4 lg:p-6">
+    <main
+      :class="[
+        'bg-muted/10 flex min-h-0 flex-1 flex-col gap-4 p-4 lg:p-6',
+        isTasksDashboardRoute ? 'overflow-hidden' : 'overflow-auto',
+      ]"
+    >
       <slot />
     </main>
   </SidebarInset>

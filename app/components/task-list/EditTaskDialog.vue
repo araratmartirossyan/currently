@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, watch } from "vue";
+import { computed, watch } from "vue";
 import {
   Dialog,
   DialogContent,
@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { Project, Task } from "@/types";
-import { TaskStatus } from "@/types";
+import { useTaskForm } from "@/composables/useTaskForm";
 
 const props = defineProps<{
   open: boolean;
@@ -27,36 +27,50 @@ const emit = defineEmits<{
   ): void;
 }>();
 
-const form = reactive({
-  title: "",
-  description: "",
-  status: TaskStatus.PENDING as TaskStatus,
-  project_id: "",
-  deadline: "",
+const initial = computed(() => {
+  const t = props.task;
+  return {
+    title: t?.title ?? "",
+    description: t?.description ?? "",
+    status: t?.status ?? "pending",
+    project_id: t?.project_id ?? "none",
+    deadline: t?.deadline ? new Date(t.deadline).toISOString().slice(0, 10) : "",
+    category: "",
+    subcategory: "",
+    priority: "medium",
+  };
 });
+
+const { handleSubmit, setValues, title, description, status, project_id, deadline, toUpdate } =
+  useTaskForm({
+    initialValues: initial.value,
+  });
 
 watch(
   () => props.task,
   (t) => {
     if (!t) return;
-    form.title = t.title || "";
-    form.description = t.description || "";
-    form.status = t.status || TaskStatus.PENDING;
-    form.project_id = t.project_id || "";
-    form.deadline = t.deadline ? new Date(t.deadline).toISOString().slice(0, 10) : "";
+    setValues({
+      title: t.title ?? "",
+      description: t.description ?? "",
+      status: t.status,
+      project_id: t.project_id ?? "none",
+      deadline: t.deadline ? new Date(t.deadline).toISOString().slice(0, 10) : "",
+    });
   },
   { immediate: true }
 );
 
-const onSave = () => {
+const onSave = handleSubmit((values) => {
+  const update = toUpdate(values);
   emit("save", {
-    title: form.title,
-    description: form.description,
-    status: form.status,
-    project_id: form.project_id || null,
-    deadline: form.deadline ? new Date(form.deadline).toISOString() : null,
+    title: values.title,
+    description: values.description || null,
+    status: values.status,
+    project_id: update.project_id ?? null,
+    deadline: update.deadline ?? null,
   });
-};
+});
 </script>
 
 <template>
@@ -75,17 +89,17 @@ const onSave = () => {
       <div class="space-y-4">
         <div class="grid gap-2">
           <label class="text-sm font-medium">Title</label>
-          <Input v-model="form.title" />
+          <Input v-model="title" />
         </div>
         <div class="grid gap-2">
           <label class="text-sm font-medium">Description</label>
-          <Textarea v-model="form.description" rows="4" />
+          <Textarea v-model="description" rows="4" />
         </div>
         <div class="grid grid-cols-2 gap-4">
           <div class="grid gap-2">
             <label class="text-sm font-medium">Status</label>
             <select
-              v-model="form.status"
+              v-model="status"
               class="border-input bg-background ring-offset-background focus-visible:ring-ring flex h-10 w-full rounded-md border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
             >
               <option value="pending">Pending</option>
@@ -96,16 +110,16 @@ const onSave = () => {
           </div>
           <div class="grid gap-2">
             <label class="text-sm font-medium">Deadline</label>
-            <Input v-model="form.deadline" type="date" />
+            <Input v-model="deadline" type="date" />
           </div>
         </div>
         <div class="grid gap-2">
           <label class="text-sm font-medium">Project</label>
           <select
-            v-model="form.project_id"
+            v-model="project_id"
             class="border-input bg-background ring-offset-background focus-visible:ring-ring flex h-10 w-full rounded-md border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
           >
-            <option value="">No project</option>
+            <option value="none">No project</option>
             <option v-for="p in projects" :key="p.id" :value="p.id">{{ p.name }}</option>
           </select>
         </div>

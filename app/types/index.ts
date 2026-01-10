@@ -31,8 +31,8 @@ export interface Task {
 export interface Project {
   id: string;
   name: string;
-  description?: string;
-  color?: string;
+  description?: string | null;
+  color?: string | null;
   category?: string | null;
   subcategory?: string | null;
   created_at: string;

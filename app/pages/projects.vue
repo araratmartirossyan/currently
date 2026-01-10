@@ -3,7 +3,7 @@ import { useProjectStore } from "@/stores/projects";
 import { useTaskStore } from "@/stores/tasks";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { FolderKanban, Plus, Loader2 } from "lucide-vue-next";
+import { FolderKanban, Plus, Loader2, Pencil, Trash2 } from "lucide-vue-next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,7 +19,6 @@ import {
 import { storeToRefs } from "pinia";
 import { ref, onMounted } from "vue";
 import { toast } from "vue-sonner";
-import { projectService } from "@/services/api";
 
 const projectStore = useProjectStore();
 const taskStore = useTaskStore();
@@ -30,16 +29,21 @@ const isCreating = ref(false);
 const isOpen = ref(false);
 const newProjectName = ref("");
 
+const isEditOpen = ref(false);
+const editingProjectId = ref<string | null>(null);
+const editProjectName = ref("");
+const isUpdating = ref(false);
+
+const isDeleteOpen = ref(false);
+const deletingProjectId = ref<string | null>(null);
+const isDeleting = ref(false);
+
 const createProject = async () => {
   if (!newProjectName.value) return;
 
   isCreating.value = true;
   try {
-    const saved = await projectService.createProject({
-      name: newProjectName.value,
-    });
-
-    projectStore.addProject(saved);
+    await projectStore.createProject({ name: newProjectName.value });
     toast.success("Project created successfully");
     newProjectName.value = "";
     isOpen.value = false;
@@ -54,17 +58,60 @@ const createProject = async () => {
 // Fetch projects on mount
 onMounted(async () => {
   try {
-    const data = await projectService.getProjects();
-    projectStore.setProjects(data);
+    await Promise.all([projectStore.fetchProjects(), taskStore.fetchTasks()]);
   } catch (e) {
     console.error("Failed to fetch projects", e);
   }
 });
 
+const openEdit = (id: string, name: string) => {
+  editingProjectId.value = id;
+  editProjectName.value = name;
+  isEditOpen.value = true;
+};
+
+const saveEdit = async () => {
+  if (!editingProjectId.value) return;
+  if (!editProjectName.value.trim()) return;
+
+  isUpdating.value = true;
+  try {
+    await projectStore.updateProjectRemote(editingProjectId.value, {
+      name: editProjectName.value.trim(),
+    });
+    toast.success("Project updated");
+    isEditOpen.value = false;
+  } catch (e) {
+    console.error(e);
+    toast.error("Failed to update project");
+  } finally {
+    isUpdating.value = false;
+  }
+};
+
+const openDelete = (id: string) => {
+  deletingProjectId.value = id;
+  isDeleteOpen.value = true;
+};
+
+const confirmDelete = async () => {
+  if (!deletingProjectId.value) return;
+  isDeleting.value = true;
+  try {
+    await projectStore.deleteProjectRemote(deletingProjectId.value);
+    toast.success("Project deleted");
+    isDeleteOpen.value = false;
+    deletingProjectId.value = null;
+  } catch (e) {
+    console.error(e);
+    toast.error("Failed to delete project");
+  } finally {
+    isDeleting.value = false;
+  }
+};
+
 const getProjectStats = (projectId: string) => {
-  const projectTasks = tasks.value.filter(
-    (t) => t.project_id === projectId || t.project === projectId
-  );
+  const projectTasks = tasks.value.filter((t) => t.project_id === projectId);
   const completed = projectTasks.filter((t) => t.status === "completed").length;
   const total = projectTasks.length;
   return {
@@ -117,6 +164,49 @@ const getProjectStats = (projectId: string) => {
       </Dialog>
     </div>
 
+    <!-- Edit Project Dialog -->
+    <Dialog v-model:open="isEditOpen">
+      <DialogContent class="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Edit Project</DialogTitle>
+          <DialogDescription>Rename your project.</DialogDescription>
+        </DialogHeader>
+        <div class="grid gap-4 py-4">
+          <div class="grid gap-2">
+            <Label for="edit-name">Project Name</Label>
+            <Input id="edit-name" v-model="editProjectName" @keyup.enter="saveEdit" />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" @click="isEditOpen = false">Cancel</Button>
+          <Button :disabled="!editProjectName.trim() || isUpdating" @click="saveEdit">
+            <Loader2 v-if="isUpdating" class="mr-2 size-4 animate-spin" />
+            Save
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <!-- Delete Project Confirmation -->
+    <Dialog v-model:open="isDeleteOpen">
+      <DialogContent class="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Delete project?</DialogTitle>
+          <DialogDescription>
+            This will remove the project. Tasks that belong to it will be kept, but their project
+            will be set to “No project”.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" @click="isDeleteOpen = false">Cancel</Button>
+          <Button variant="destructive" :disabled="isDeleting" @click="confirmDelete">
+            <Loader2 v-if="isDeleting" class="mr-2 size-4 animate-spin" />
+            Delete
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
     <div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
       <Card
         v-for="project in projects"
@@ -127,7 +217,25 @@ const getProjectStats = (projectId: string) => {
           <CardTitle class="text-sm font-medium">
             {{ project.name }}
           </CardTitle>
-          <FolderKanban class="text-muted-foreground size-4" />
+          <div class="flex items-center gap-1">
+            <Button
+              size="icon"
+              variant="ghost"
+              class="h-8 w-8"
+              @click.stop="openEdit(project.id, project.name)"
+            >
+              <Pencil class="size-4" />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              class="text-destructive hover:text-destructive h-8 w-8"
+              @click.stop="openDelete(project.id)"
+            >
+              <Trash2 class="size-4" />
+            </Button>
+            <FolderKanban class="text-muted-foreground ml-1 size-4" />
+          </div>
         </CardHeader>
         <CardContent>
           <div class="text-2xl font-bold">{{ getProjectStats(project.id).total }} Tasks</div>
@@ -160,7 +268,7 @@ const getProjectStats = (projectId: string) => {
           <FolderKanban class="text-muted-foreground mx-auto size-12 opacity-20" />
           <h3 class="mt-4 font-semibold">No projects yet</h3>
           <p class="text-muted-foreground text-sm">Create your first project to get started.</p>
-          <Button variant="outline" class="mt-4">Create Project</Button>
+          <Button variant="outline" class="mt-4" @click="isOpen = true">Create Project</Button>
         </div>
       </Card>
     </div>

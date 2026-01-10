@@ -1,6 +1,6 @@
 import { useTaskStore } from "@/stores/tasks";
 import { useProjectStore } from "@/stores/projects";
-import { TaskPriority, TaskStatus, type Project, type Task } from "@/types";
+import type { Project, Task } from "@/types";
 
 export default defineNuxtPlugin(() => {
   const taskStore = useTaskStore();
@@ -10,62 +10,23 @@ export default defineNuxtPlugin(() => {
    * Seed mock data only when Supabase credentials are missing.
    * If SUPABASE_URL / SUPABASE_KEY are set, do nothing.
    */
-  const supabaseUrl = process.env.SUPABASE_URL || "";
-  const supabaseKey = process.env.SUPABASE_KEY || "";
+  const config = useRuntimeConfig();
+  const supabaseUrl =
+    config.public?.supabaseUrl ||
+    process.env.SUPABASE_URL ||
+    process.env.NUXT_PUBLIC_SUPABASE_URL ||
+    "";
+  const supabaseKey =
+    config.public?.supabaseKey ||
+    process.env.SUPABASE_KEY ||
+    process.env.NUXT_PUBLIC_SUPABASE_KEY ||
+    process.env.NUXT_PUBLIC_SUPABASE_ANON_KEY ||
+    "";
 
   if (!supabaseUrl || !supabaseKey) {
-    const initialTasks: Task[] = [
-      {
-        id: "1",
-        title: "Initialize project",
-        description: "Set up Nuxt and Pinia",
-        status: TaskStatus.COMPLETED,
-        priority: TaskPriority.HIGH,
-        tags: ["Setup"],
-        attachments: [],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        project_id: null,
-        category: null,
-        subcategory: null,
-        deadline: null,
-      },
-      {
-        id: "2",
-        title: "Implement Kanban",
-        description: "Add vuedraggable and board layout",
-        status: TaskStatus.IN_PROGRESS,
-        priority: TaskPriority.HIGH,
-        tags: ["Frontend"],
-        attachments: [],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        project_id: null,
-        category: null,
-        subcategory: null,
-        deadline: null,
-      },
-      {
-        id: "3",
-        title: "Voice Task",
-        description: "Test voice recording extraction",
-        status: TaskStatus.PENDING,
-        priority: TaskPriority.MEDIUM,
-        tags: ["AI"],
-        attachments: [],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        project_id: null,
-        category: null,
-        subcategory: null,
-        deadline: null,
-      },
-    ];
+    const initialTasks: Task[] = [];
 
-    const initialProjects: Project[] = [
-      { id: "1", name: "DAT Project", created_at: new Date().toISOString() },
-      { id: "2", name: "Personal", created_at: new Date().toISOString() },
-    ];
+    const initialProjects: Project[] = [];
 
     taskStore.setTasks(initialTasks);
     projectStore.setProjects(initialProjects);

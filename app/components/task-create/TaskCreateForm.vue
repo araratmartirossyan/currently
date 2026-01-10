@@ -1,8 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { computed, onMounted, watch } from "vue";
 import { Mic, Square, Loader2, Save } from "lucide-vue-next";
-import { useForm, useField } from "vee-validate";
-import * as yup from "yup";
 import { storeToRefs } from "pinia";
 import { toast } from "vue-sonner";
 
@@ -16,23 +14,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import { aiService } from "@/services/ai";
-import { taskService, projectService } from "@/services/api";
 import { useTaskStore } from "@/stores/tasks";
 import { useProjectStore } from "@/stores/projects";
-import type { Task, TaskPriority, TaskStatus } from "@/types";
-
-type VoiceNoteResponse = {
-  text?: string;
-  extracted?: {
-    title?: string;
-    description?: string;
-    project?: string;
-    priority?: TaskPriority;
-    tags?: string[];
-    deadline?: string | null;
-  };
-};
+import { useVoiceNote } from "@/composables/useVoiceNote";
+import { useTaskForm } from "@/composables/useTaskForm";
 
 const emit = defineEmits<{
   (e: "created" | "cancel"): void;
@@ -41,167 +26,48 @@ const emit = defineEmits<{
 const taskStore = useTaskStore();
 const projectStore = useProjectStore();
 const { projects } = storeToRefs(projectStore);
-
-const isRecording = ref(false);
-const isProcessing = ref(false);
-const mediaRecorder = ref<MediaRecorder | null>(null);
-const audioChunks = ref<Blob[]>([]);
-
-type FormValues = {
-  title: string;
-  description: string;
-  project_id: string;
-  priority: "low" | "medium" | "high" | "urgent";
-  status: "pending" | "in_progress" | "completed" | "cancelled";
-  category: string;
-  subcategory: string;
-  deadline: string;
-};
-
-const schema = yup.object({
-  title: yup.string().required("Title is required"),
-  description: yup.string().optional(),
-  project_id: yup.string().optional(),
-  priority: yup
-    .mixed<"low" | "medium" | "high" | "urgent">()
-    .oneOf(["low", "medium", "high", "urgent"])
-    .required(),
-  status: yup
-    .mixed<"pending" | "in_progress" | "completed" | "cancelled">()
-    .oneOf(["pending", "in_progress", "completed", "cancelled"])
-    .required(),
-  category: yup.string().optional(),
-  subcategory: yup.string().optional(),
-  deadline: yup.string().optional(),
+const projectNames = computed(() => projects.value.map((p) => p.name));
+const { isRecording, isProcessing, result, startRecording, stopRecording } = useVoiceNote({
+  projectNames,
 });
 
-const { handleSubmit, setValues, resetForm } = useForm<FormValues>({
-  validationSchema: schema,
-  initialValues: {
-    title: "",
-    description: "",
-    project_id: "none",
-    priority: "medium",
-    status: "pending",
-    category: "",
-    subcategory: "",
-    deadline: "",
-  },
-});
-
-const { value: title } = useField<string>("title");
-const { value: description } = useField<string>("description");
-const { value: project_id } = useField<string>("project_id");
-const { value: priority } = useField<"low" | "medium" | "high" | "urgent">("priority");
-const { value: status } = useField<"pending" | "in_progress" | "completed" | "cancelled">("status");
-const { value: category } = useField<string>("category");
-const { value: subcategory } = useField<string>("subcategory");
-const { value: deadline } = useField<string>("deadline");
+const {
+  handleSubmit,
+  resetForm,
+  title,
+  description,
+  project_id,
+  priority,
+  status,
+  category,
+  subcategory,
+  deadline,
+  applyVoiceResult,
+  toInsert,
+  isValidTitle,
+} = useTaskForm();
 
 onMounted(async () => {
   try {
-    const data = await projectService.getProjects();
-    projectStore.setProjects(data);
+    await projectStore.fetchProjects();
   } catch (e) {
     console.error("Failed to load projects", e);
   }
 });
 
-const startRecording = async () => {
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    mediaRecorder.value = new MediaRecorder(stream);
-    audioChunks.value = [];
-
-    mediaRecorder.value.ondataavailable = (event) => {
-      audioChunks.value.push(event.data);
-    };
-
-    mediaRecorder.value.onstop = async () => {
-      const audioBlob = new Blob(audioChunks.value, { type: "audio/webm" });
-      const file = new File([audioBlob], "recording.webm", {
-        type: "audio/webm",
-      });
-      await processAudio(file);
-    };
-
-    mediaRecorder.value.start();
-    isRecording.value = true;
-  } catch (err) {
-    console.error("Error accessing microphone", err);
-    toast.error("Could not access microphone");
-  }
-};
-
-const stopRecording = () => {
-  if (mediaRecorder.value && isRecording.value) {
-    mediaRecorder.value.stop();
-    isRecording.value = false;
-    mediaRecorder.value.stream.getTracks().forEach((track) => track.stop());
-  }
-};
-
-const processAudio = async (file: File) => {
-  isProcessing.value = true;
-  try {
-    toast.info("Processing voice note...");
-    const projectNames = projects.value.map((p) => p.name);
-    const response = (await aiService.processVoiceNote(file, projectNames)) as VoiceNoteResponse;
-
-    if (response?.extracted) {
-      const matched = response.extracted.project
-        ? projects.value.find(
-            (p) => p.name.toLowerCase() === String(response.extracted?.project).toLowerCase()
-          )
-        : null;
-
-      const transcript = response.text || "";
-      const descFromAi = response.extracted.description || "";
-      const descriptionValue =
-        !descFromAi || descFromAi.length < Math.max(40, transcript.length * 0.6)
-          ? transcript || descFromAi
-          : descFromAi;
-
-      setValues({
-        title: response.extracted.title || title.value,
-        description: descriptionValue || description.value,
-        project_id: matched ? matched.id : project_id.value,
-        priority: (response.extracted.priority as TaskPriority) || priority.value,
-        status: status.value,
-        category: category.value || "",
-        subcategory: subcategory.value || "",
-        deadline: deadline.value || "",
-      });
-
-      toast.success("Task info extracted!");
-    }
-  } catch (err) {
-    console.error("AI processing failed", err);
-    toast.error("Failed to process voice note");
-  } finally {
-    isProcessing.value = false;
-  }
-};
+watch(
+  result,
+  (response) => {
+    if (!response?.extracted) return;
+    applyVoiceResult(response, projects.value);
+    toast.success("Task info extracted!");
+  },
+  { deep: true }
+);
 
 const onSubmit = handleSubmit(async (values) => {
   try {
-    const projectId = values.project_id === "none" ? null : values.project_id;
-    const payload: Partial<Task> = {
-      title: values.title,
-      description: values.description || null,
-      project_id: projectId,
-      category: values.category?.trim() ? values.category.trim() : null,
-      subcategory: values.subcategory?.trim() ? values.subcategory.trim() : null,
-      deadline: values.deadline ? new Date(values.deadline).toISOString() : null,
-      priority: values.priority as TaskPriority,
-      status: values.status as TaskStatus,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      attachments: [],
-    };
-
-    const saved = await taskService.createTask(payload);
-    taskStore.addTask(saved);
+    await taskStore.createTask(toInsert(values));
 
     toast.success("Task created successfully");
     resetForm();
@@ -320,7 +186,7 @@ const onCancel = () => {
 
       <div class="flex justify-end gap-2 pt-2">
         <Button type="button" variant="outline" @click="onCancel">Cancel</Button>
-        <Button type="submit" :disabled="!title">
+        <Button type="submit" :disabled="!isValidTitle">
           <Save class="mr-2 size-4" />
           Save Task
         </Button>
