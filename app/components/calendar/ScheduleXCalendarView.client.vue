@@ -5,15 +5,14 @@ import { useScheduleXCalendar } from "@/composables/useScheduleXCalendar";
 import { useTheme } from "@/composables/useTheme";
 
 // Schedule-X (client-only component)
-// Vercel SSR can treat @schedule-x/vue as CommonJS -> named exports may fail.
-// Default-import keeps it compatible for direct (SSR) page loads.
-import ScheduleXVue from "@schedule-x/vue";
+// Vercel SSR can treat @schedule-x/vue as CommonJS -> named exports may fail on direct loads.
+// Namespace import works for both ESM + CommonJS interop.
+import * as ScheduleXVue from "@schedule-x/vue";
 import "@schedule-x/theme-default/dist/index.css";
 import "temporal-polyfill/global";
 
 const ScheduleXCalendar =
-  (ScheduleXVue as unknown as { ScheduleXCalendar: unknown }).ScheduleXCalendar ||
-  (ScheduleXVue as unknown as { default?: { ScheduleXCalendar?: unknown } }).default?.ScheduleXCalendar;
+  (ScheduleXVue as unknown as { ScheduleXCalendar?: unknown }).ScheduleXCalendar;
 
 const props = defineProps<{
   mode: "meetings" | "tasks";
