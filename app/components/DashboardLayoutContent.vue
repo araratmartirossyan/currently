@@ -26,6 +26,7 @@ import { storeToRefs } from "pinia";
 import { computed, ref } from "vue";
 import { useRoute } from "vue-router";
 
+const user = useSupabaseUser();
 const { isMobile, setOpen, open } = useSidebar();
 const route = useRoute();
 const taskStore = useTaskStore();
@@ -52,6 +53,7 @@ const breadcrumbs = computed(() => {
 });
 
 const isTasksDashboardRoute = computed(() => route.path === "/");
+const isOwner = computed(() => Boolean(user.value));
 </script>
 
 <template>
@@ -102,7 +104,7 @@ const isTasksDashboardRoute = computed(() => route.path === "/");
         </Breadcrumb>
 
         <div class="ml-auto flex items-center gap-2">
-          <DropdownMenu>
+          <DropdownMenu v-if="isOwner">
             <DropdownMenuTrigger as-child>
               <Button variant="outline" size="sm" class="h-8 gap-1 pr-2">
                 {{ currentProjectName }}
@@ -129,7 +131,7 @@ const isTasksDashboardRoute = computed(() => route.path === "/");
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <Sheet v-model:open="isCreateTaskOpen">
+          <Sheet v-if="isOwner" v-model:open="isCreateTaskOpen">
             <Button
               size="sm"
               variant="outline"
@@ -157,6 +159,10 @@ const isTasksDashboardRoute = computed(() => route.path === "/");
               />
             </SheetContent>
           </Sheet>
+
+          <Button v-else as-child variant="outline" size="sm" class="h-8 cursor-pointer">
+            <NuxtLink to="/login">Sign in</NuxtLink>
+          </Button>
         </div>
       </div>
     </header>

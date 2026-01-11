@@ -1,17 +1,15 @@
 <script setup lang="ts">
 import {
   BadgeCheck,
-  Bell,
   CalendarDays,
   ChevronsUpDown,
-  CreditCard,
   FolderKanban,
   GalleryVerticalEnd,
   ListTodo,
   LogOut,
   Settings,
-  Sparkles,
 } from "lucide-vue-next";
+import { computed } from "vue";
 import {
   Sidebar,
   SidebarContent,
@@ -38,21 +36,20 @@ import { useSidebar } from "@/components/ui/sidebar/utils";
 
 const { setOpen } = useSidebar();
 
-const data = {
-  user: {
-    name: "ararat",
-    email: "ararat@example.com",
-    // fallback avatar to avoid 404s in dev
-    avatar: "https://ui-avatars.com/api/?name=Ararat&background=0D8ABC&color=fff",
-  },
-  teams: [
-    {
-      name: "Currently Inc",
-      logo: GalleryVerticalEnd,
-      plan: "Enterprise",
-    },
-  ],
-  navMain: [
+const supabase = useSupabaseClient();
+const user = useSupabaseUser();
+
+const navMain = computed(() => {
+  if (!user.value) {
+    return [
+      {
+        title: "Calendar",
+        url: "/calendar",
+        icon: CalendarDays,
+      },
+    ];
+  }
+  return [
     {
       title: "Tasks",
       url: "/",
@@ -74,22 +71,36 @@ const data = {
       url: "/settings",
       icon: Settings,
     },
-  ],
-};
+  ];
+});
 
-const team = data.teams[0] ?? {
+const displayName = computed(() => user.value?.email?.split("@")[0] || "Guest");
+const displayEmail = computed(() => user.value?.email || "Read-only calendar");
+const avatarUrl = computed(() => {
+  const name = encodeURIComponent(displayName.value || "Guest");
+  return `https://ui-avatars.com/api/?name=${name}&background=0D8ABC&color=fff`;
+});
+
+const team = {
   name: "Currently",
   logo: GalleryVerticalEnd,
-  plan: "",
+  plan: user.value ? "Owner" : "Public",
 };
 
 const handleLinkClick = () => {
   setOpen(false);
 };
 
-const handleLogout = () => {
+const handleLogout = async () => {
   setOpen(false);
-  toast.success("Logged out successfully");
+  try {
+    await supabase.auth.signOut();
+    toast.success("Logged out");
+    await navigateTo("/calendar");
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : "Failed to log out";
+    toast.error(message);
+  }
 };
 </script>
 
@@ -124,7 +135,7 @@ const handleLogout = () => {
       <SidebarGroup>
         <SidebarGroupLabel>Platform</SidebarGroupLabel>
         <SidebarMenu>
-          <SidebarMenuItem v-for="item in data.navMain" :key="item.title">
+          <SidebarMenuItem v-for="item in navMain" :key="item.title">
             <SidebarMenuButton as-child :tooltip="item.title">
               <NuxtLink :to="item.url" @click="handleLinkClick">
                 <component :is="item.icon" />
@@ -139,19 +150,21 @@ const handleLogout = () => {
     <SidebarFooter>
       <SidebarMenu>
         <SidebarMenuItem>
-          <DropdownMenu>
+          <DropdownMenu v-if="user">
             <DropdownMenuTrigger as-child>
               <SidebarMenuButton
                 size="lg"
                 class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
               >
                 <Avatar class="h-8 w-8 rounded-lg">
-                  <AvatarImage :src="data.user.avatar" :alt="data.user.name" />
-                  <AvatarFallback class="rounded-lg">AM</AvatarFallback>
+                  <AvatarImage :src="avatarUrl" :alt="displayName" />
+                  <AvatarFallback class="rounded-lg">{{
+                    displayName.slice(0, 2).toUpperCase()
+                  }}</AvatarFallback>
                 </Avatar>
                 <div class="grid flex-1 text-left text-sm leading-tight">
-                  <span class="truncate font-semibold">{{ data.user.name }}</span>
-                  <span class="truncate text-xs">{{ data.user.email }}</span>
+                  <span class="truncate font-semibold">{{ displayName }}</span>
+                  <span class="truncate text-xs">{{ displayEmail }}</span>
                 </div>
                 <ChevronsUpDown class="ml-auto size-4" />
               </SidebarMenuButton>
@@ -165,22 +178,17 @@ const handleLogout = () => {
               <DropdownMenuLabel class="p-0 font-normal">
                 <div class="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                   <Avatar class="h-8 w-8 rounded-lg">
-                    <AvatarImage :src="data.user.avatar" :alt="data.user.name" />
-                    <AvatarFallback class="rounded-lg">AM</AvatarFallback>
+                    <AvatarImage :src="avatarUrl" :alt="displayName" />
+                    <AvatarFallback class="rounded-lg">{{
+                      displayName.slice(0, 2).toUpperCase()
+                    }}</AvatarFallback>
                   </Avatar>
                   <div class="grid flex-1 text-left text-sm leading-tight">
-                    <span class="truncate font-semibold">{{ data.user.name }}</span>
-                    <span class="truncate text-xs">{{ data.user.email }}</span>
+                    <span class="truncate font-semibold">{{ displayName }}</span>
+                    <span class="truncate text-xs">{{ displayEmail }}</span>
                   </div>
                 </div>
               </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuGroup>
-                <DropdownMenuItem @click="handleLinkClick">
-                  <Sparkles class="mr-2 size-4" />
-                  Upgrade to Pro
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
               <DropdownMenuSeparator />
               <DropdownMenuGroup>
                 <DropdownMenuItem as-child @click="handleLinkClick">
@@ -188,14 +196,6 @@ const handleLogout = () => {
                     <BadgeCheck class="mr-2 size-4" />
                     Account
                   </NuxtLink>
-                </DropdownMenuItem>
-                <DropdownMenuItem @click="handleLinkClick">
-                  <CreditCard class="mr-2 size-4" />
-                  Billing
-                </DropdownMenuItem>
-                <DropdownMenuItem @click="handleLinkClick">
-                  <Bell class="mr-2 size-4" />
-                  Notifications
                 </DropdownMenuItem>
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
@@ -208,6 +208,12 @@ const handleLogout = () => {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+
+          <SidebarMenuButton v-else as-child size="lg">
+            <NuxtLink to="/login" class="cursor-pointer" @click="handleLinkClick">
+              <span class="font-semibold">Sign in</span>
+            </NuxtLink>
+          </SidebarMenuButton>
         </SidebarMenuItem>
       </SidebarMenu>
     </SidebarFooter>

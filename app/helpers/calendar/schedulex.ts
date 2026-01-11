@@ -115,11 +115,12 @@ export function buildScheduleXEvents(args: {
             const occEndIso = new Date(occ.getTime() + durationMs).toISOString();
 
             // Week/day views render all-day events reliably when start/end are PlainDate
+            // IMPORTANT: Schedule-X treats all-day (PlainDate) `end` as INCLUSIVE, not exclusive.
             const start = e.is_all_day
               ? toPlainDateInTimeZone(occStartIso, timeZone)
               : toTemporalZdt(occStartIso, timeZone);
             const end = e.is_all_day
-              ? (start as Temporal.PlainDate).add({ days: allDaySpanDays })
+              ? (start as Temporal.PlainDate).add({ days: Math.max(0, allDaySpanDays - 1) })
               : toTemporalZdt(occEndIso, timeZone);
 
             return {
@@ -141,7 +142,7 @@ export function buildScheduleXEvents(args: {
         ? toPlainDateInTimeZone(e.start_at, timeZone)
         : toTemporalZdt(e.start_at, timeZone);
       const end = e.is_all_day
-        ? (start as Temporal.PlainDate).add({ days: allDaySpanDays })
+        ? (start as Temporal.PlainDate).add({ days: Math.max(0, allDaySpanDays - 1) })
         : toTemporalZdt(safeEndIso, timeZone);
 
       return [
@@ -167,7 +168,8 @@ export function buildScheduleXEvents(args: {
       if (!startIso || !endIso) {
         const dayIso = t.deadline || t.start_at || new Date().toISOString();
         const dayStart = toPlainDateInTimeZone(dayIso, timeZone);
-        const dayEnd = (dayStart as Temporal.PlainDate).add({ days: 1 });
+        // Schedule-X treats all-day (PlainDate) `end` as inclusive
+        const dayEnd = dayStart as Temporal.PlainDate;
         const projectName = (t.project_id && projectNameById[t.project_id]) || "";
         const lastDay = new Intl.DateTimeFormat(undefined, {
           month: "short",

@@ -92,12 +92,17 @@ export const projectService = {
 export const calendarEventService = {
   async getEventsInRange(startIso: string, endIso: string) {
     const supabase = useSupabaseClient() as SupabaseClient<Database>;
-    // overlap query: start < endIso AND end > startIso
+    // Fetch:
+    // - normal events overlapping the range
+    // - recurring "master" events even if their original instance doesn't overlap the range,
+    //   so the client can expand occurrences for the visible range.
+    const overlap = `and(start_at.lt.${endIso},end_at.gt.${startIso})`;
+    const recurringMaster = `and(rrule.not.is.null,start_at.lt.${endIso})`;
+
     const { data, error } = await supabase
       .from("calendar_events")
       .select("*")
-      .lt("start_at", endIso)
-      .gt("end_at", startIso)
+      .or(`${overlap},${recurringMaster}`)
       .order("start_at", { ascending: true });
 
     if (error) throw error;

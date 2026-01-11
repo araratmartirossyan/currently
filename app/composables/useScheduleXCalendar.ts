@@ -45,6 +45,23 @@ export function useScheduleXCalendar(args: {
 
   const controls = calendarControls as unknown as CalendarControls;
 
+  function startOfDayIso(date: Temporal.PlainDate) {
+    return date
+      .toZonedDateTime({ timeZone, plainTime: Temporal.PlainTime.from("00:00") })
+      .toInstant()
+      .toString();
+  }
+
+  function updateRangeAroundSelectedDate(date: Temporal.PlainDate) {
+    // Some Schedule-X navigation paths don't fire onRangeUpdate reliably (esp. week/day switching).
+    // Keep a wide range so recurring events can always be expanded for the visible period.
+    const start = date.subtract({ days: 14 });
+    const endExclusive = date.add({ days: 60 }).add({ days: 1 }); // include full last day
+    const payload = { startIso: startOfDayIso(start), endIso: startOfDayIso(endExclusive) };
+    visibleRange.value = payload;
+    args.onRangeChange(payload);
+  }
+
   function hashToHex(key: string) {
     let h = 0;
     for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
@@ -135,6 +152,9 @@ export function useScheduleXCalendar(args: {
           visibleRange.value = payload;
           args.onRangeChange(payload);
         },
+        onSelectedDateUpdate(date: Temporal.PlainDate) {
+          updateRangeAroundSelectedDate(date);
+        },
         onClickDateTime(dateTime: unknown) {
           if (!args.onSlotClick) return;
           const iso = rangePartToIso(dateTime);
@@ -189,6 +209,9 @@ export function useScheduleXCalendar(args: {
             const payload = { startIso, endIso };
             visibleRange.value = payload;
             args.onRangeChange(payload);
+          },
+          onSelectedDateUpdate(date: Temporal.PlainDate) {
+            updateRangeAroundSelectedDate(date);
           },
           onClickDateTime(dateTime: unknown) {
             if (!args.onSlotClick) return;

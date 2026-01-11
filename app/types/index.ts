@@ -14,6 +14,7 @@ export enum TaskPriority {
 
 export interface Task {
   id: string;
+  user_id?: string | null;
   title: string;
   description?: string | null;
   status: TaskStatus;
@@ -32,6 +33,7 @@ export interface Task {
 
 export interface Project {
   id: string;
+  user_id?: string | null;
   name: string;
   description?: string | null;
   color?: string | null;
@@ -44,6 +46,7 @@ export type CalendarEventSource = "import" | "manual" | "google" | "outlook";
 
 export interface CalendarEvent {
   id: string;
+  user_id?: string | null;
   project_id?: string | null;
   title: string;
   description?: string | null;

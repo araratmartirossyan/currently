@@ -6,6 +6,7 @@ export interface Database {
       tasks: {
         Row: {
           id: string;
+          user_id: string | null;
           title: string;
           description: string | null;
           status: string;
@@ -23,6 +24,7 @@ export interface Database {
         };
         Insert: {
           id?: string;
+          user_id?: string | null;
           title: string;
           description?: string | null;
           status?: string;
@@ -40,6 +42,7 @@ export interface Database {
         };
         Update: {
           id?: string;
+          user_id?: string | null;
           title?: string;
           description?: string | null;
           status?: string;
@@ -60,6 +63,7 @@ export interface Database {
       projects: {
         Row: {
           id: string;
+          user_id: string | null;
           name: string;
           description: string | null;
           color: string | null;
@@ -69,6 +73,7 @@ export interface Database {
         };
         Insert: {
           id?: string;
+          user_id?: string | null;
           name: string;
           description?: string | null;
           color?: string | null;
@@ -78,6 +83,7 @@ export interface Database {
         };
         Update: {
           id?: string;
+          user_id?: string | null;
           name?: string;
           description?: string | null;
           color?: string | null;
@@ -90,6 +96,7 @@ export interface Database {
       calendar_events: {
         Row: {
           id: string;
+          user_id: string | null;
           project_id: string | null;
           title: string;
           description: string | null;
@@ -108,6 +115,7 @@ export interface Database {
         };
         Insert: {
           id?: string;
+          user_id?: string | null;
           project_id?: string | null;
           title: string;
           description?: string | null;
@@ -126,6 +134,7 @@ export interface Database {
         };
         Update: {
           id?: string;
+          user_id?: string | null;
           project_id?: string | null;
           title?: string;
           description?: string | null;
@@ -139,6 +148,30 @@ export interface Database {
           source_uid?: string | null;
           source_calendar?: string | null;
           raw_payload?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      app_settings: {
+        Row: {
+          id: number;
+          owner_user_id: string | null;
+          public_calendar_enabled: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: number;
+          owner_user_id?: string | null;
+          public_calendar_enabled?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: number;
+          owner_user_id?: string | null;
+          public_calendar_enabled?: boolean;
           created_at?: string;
           updated_at?: string;
         };

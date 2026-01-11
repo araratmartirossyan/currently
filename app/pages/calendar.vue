@@ -15,10 +15,13 @@ import type { CalendarEvent, Task } from "@/types";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import TaskCreateForm from "@/components/task-create/TaskCreateForm.vue";
 import { startOfMonth, endOfMonth, startOfWeek, endOfWeek } from "date-fns";
+import { toast } from "vue-sonner";
 
 const calendarStore = useCalendarEventsStore();
 const taskStore = useTaskStore();
 const projectStore = useProjectStore();
+const user = useSupabaseUser();
+const isOwner = computed(() => Boolean(user.value));
 
 const { events } = storeToRefs(calendarStore);
 const { filteredTasks } = storeToRefs(taskStore);
@@ -44,6 +47,12 @@ const editingTask = ref<Task | null>(null);
 const editingMeeting = ref<CalendarEvent | null>(null);
 
 const onCalendarEventClick = ({ kind, id }: { kind: "task" | "meeting"; id: string }) => {
+  if (!isOwner.value) {
+    toast.message("Read-only calendar", {
+      description: "Sign in to edit meetings and tasks.",
+    });
+    return;
+  }
   if (kind === "task") {
     const t = taskStore.tasks.find((x) => x.id === id) || null;
     editingTask.value = t;
@@ -57,8 +66,22 @@ const onCalendarEventClick = ({ kind, id }: { kind: "task" | "meeting"; id: stri
 };
 
 const onCalendarSlotClick = (payload: { date: Date; isAllDay: boolean }) => {
+  if (!isOwner.value) {
+    toast.message("Read-only calendar", {
+      description: "Sign in to create meetings or tasks.",
+    });
+    return;
+  }
   const start = payload.isAllDay
-    ? new Date(payload.date.getFullYear(), payload.date.getMonth(), payload.date.getDate(), 9, 0, 0, 0)
+    ? new Date(
+        payload.date.getFullYear(),
+        payload.date.getMonth(),
+        payload.date.getDate(),
+        9,
+        0,
+        0,
+        0
+      )
     : payload.date;
   const end = new Date(start.getTime() + 60 * 60 * 1000);
   slotStart.value = start;
@@ -74,10 +97,7 @@ const onCalendarSlotClick = (payload: { date: Date; isAllDay: boolean }) => {
 };
 
 const onTaskSave = async (
-  payload: Pick<
-    Task,
-    "title" | "description" | "status" | "project_id" | "start_at" | "end_at"
-  >
+  payload: Pick<Task, "title" | "description" | "status" | "project_id" | "start_at" | "end_at">
 ) => {
   if (!editingTask.value) return;
   await taskStore.updateTaskRemote(editingTask.value.id, {
@@ -95,10 +115,12 @@ const onTaskDelete = async (id: string) => {
 onMounted(async () => {
   // preload everything BEFORE mounting calendar (avoids view/recurrence timing issues)
   isCalendarReady.value = false;
-  await Promise.all([
-    taskStore.tasks.length ? Promise.resolve() : taskStore.fetchTasks(),
-    projectStore.projects.length ? Promise.resolve() : projectStore.fetchProjects(),
-  ]);
+  if (isOwner.value) {
+    await Promise.all([
+      taskStore.tasks.length ? Promise.resolve() : taskStore.fetchTasks(),
+      projectStore.projects.length ? Promise.resolve() : projectStore.fetchProjects(),
+    ]);
+  }
 
   const now = new Date();
   const monthStart = startOfWeek(startOfMonth(now), { weekStartsOn: 1 });
@@ -108,7 +130,11 @@ onMounted(async () => {
 });
 
 const title = computed(() =>
-  mode.value === "meetings" ? "Calendar · Meetings" : "Calendar · Tasks"
+  isOwner.value
+    ? mode.value === "meetings"
+      ? "Calendar · Meetings"
+      : "Calendar · Tasks"
+    : "Calendar · Public"
 );
 
 useHead(() => ({ title: title.value }));
@@ -119,17 +145,23 @@ useHead(() => ({ title: title.value }));
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div class="flex items-center gap-3">
         <h1 class="text-2xl font-semibold tracking-tight">Calendar</h1>
-        <Tabs v-model="mode" class="w-auto">
+        <Tabs v-if="isOwner" v-model="mode" class="w-auto">
           <TabsList class="bg-slate-100/60">
             <TabsTrigger value="meetings">Meetings</TabsTrigger>
             <TabsTrigger value="tasks">Tasks</TabsTrigger>
           </TabsList>
         </Tabs>
+        <p v-else class="text-sm text-slate-500">Read-only agenda</p>
       </div>
 
       <div class="flex items-center gap-2">
-        <Button variant="outline" @click="isImportOpen = true">Import</Button>
-        <Button v-if="mode === 'meetings'" @click="isCreateMeetingOpen = true">New meeting</Button>
+        <Button v-if="isOwner" variant="outline" @click="isImportOpen = true">Import</Button>
+        <Button v-if="isOwner && mode === 'meetings'" @click="isCreateMeetingOpen = true"
+          >New meeting</Button
+        >
+        <Button v-if="!isOwner" as-child variant="outline" class="cursor-pointer">
+          <NuxtLink to="/login">Sign in</NuxtLink>
+        </Button>
       </div>
     </div>
 
@@ -142,20 +174,20 @@ useHead(() => ({ title: title.value }));
 
     <client-only v-else>
       <ScheduleXCalendarView
-        :mode="mode"
+        :mode="isOwner ? mode : 'meetings'"
         :meetings="events"
-        :tasks="filteredTasks"
-        :project-color-by-id="projectColorById"
-        :project-name-by-id="projectNameById"
+        :tasks="isOwner ? filteredTasks : []"
+        :project-color-by-id="isOwner ? projectColorById : {}"
+        :project-name-by-id="isOwner ? projectNameById : {}"
         @range-change="({ startIso, endIso }) => calendarStore.fetchRange(startIso, endIso)"
         @event-click="onCalendarEventClick"
         @slot-click="onCalendarSlotClick"
       />
     </client-only>
 
-    <ImportMeetingsDialog :open="isImportOpen" @close="isImportOpen = false" />
+    <ImportMeetingsDialog v-if="isOwner" :open="isImportOpen" @close="isImportOpen = false" />
 
-    <Sheet v-model:open="isCreateMeetingOpen">
+    <Sheet v-if="isOwner" v-model:open="isCreateMeetingOpen">
       <SheetContent side="right" class="w-full overflow-y-auto sm:max-w-[560px]">
         <SheetHeader class="mb-4">
           <SheetTitle>Create meeting</SheetTitle>
@@ -171,7 +203,7 @@ useHead(() => ({ title: title.value }));
       </SheetContent>
     </Sheet>
 
-    <Sheet v-model:open="isCreateTaskOpen">
+    <Sheet v-if="isOwner" v-model:open="isCreateTaskOpen">
       <SheetContent side="right" class="w-full overflow-y-auto sm:max-w-[560px]">
         <SheetHeader class="mb-4">
           <SheetTitle>Create task</SheetTitle>
@@ -187,6 +219,7 @@ useHead(() => ({ title: title.value }));
     </Sheet>
 
     <EditTaskDialog
+      v-if="isOwner"
       :open="!!editingTask"
       :task="editingTask"
       :projects="projects"
@@ -196,6 +229,7 @@ useHead(() => ({ title: title.value }));
     />
 
     <EditMeetingDialog
+      v-if="isOwner"
       :open="!!editingMeeting"
       :meeting="editingMeeting"
       :projects="projects"
