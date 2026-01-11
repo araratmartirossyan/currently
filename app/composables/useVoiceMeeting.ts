@@ -1,37 +1,28 @@
-import { computed, ref, type Ref } from "vue";
+import { computed, ref } from "vue";
 import { toast } from "vue-sonner";
 import { aiService } from "@/services/ai";
-import type { TaskPriority } from "@/types";
 
-export type VoiceNoteResponse = {
+export type VoiceMeetingResponse = {
   text?: string;
   extracted?: {
     title?: string;
-    description?: string;
-    project?: string | null;
-    priority?: TaskPriority;
-    tags?: string[];
-    deadline?: string | null;
+    description?: string | null;
+    location?: string | null;
+    is_all_day?: boolean;
     start_at?: string | null;
     end_at?: string | null;
+    rrule?: string | null;
   };
 };
 
-type Options = {
-  projectNames?: Ref<string[]>;
-  onResult?: (result: VoiceNoteResponse) => void;
-};
-
-export function useVoiceNote(options: Options = {}) {
+export function useVoiceMeeting() {
   const isRecording = ref(false);
   const isProcessing = ref(false);
   const error = ref<string | null>(null);
-  const result = ref<VoiceNoteResponse | null>(null);
+  const result = ref<VoiceMeetingResponse | null>(null);
 
   const mediaRecorder = ref<MediaRecorder | null>(null);
   const audioChunks = ref<Blob[]>([]);
-
-  const projectNames = computed(() => options.projectNames?.value ?? []);
 
   async function processFile(file: File) {
     if (import.meta.server) return;
@@ -39,12 +30,8 @@ export function useVoiceNote(options: Options = {}) {
     error.value = null;
     try {
       toast.info("Processing voice note...");
-      const response = (await aiService.processVoiceNote(
-        file,
-        projectNames.value
-      )) as VoiceNoteResponse;
+      const response = (await aiService.processVoiceMeeting(file)) as VoiceMeetingResponse;
       result.value = response;
-      options.onResult?.(response);
       return response;
     } catch (e) {
       console.error("AI processing failed", e);
@@ -75,7 +62,6 @@ export function useVoiceNote(options: Options = {}) {
           const file = new File([audioBlob], "recording.webm", { type: "audio/webm" });
           await processFile(file);
         } finally {
-          // Ensure mic is released
           stream.getTracks().forEach((track) => track.stop());
         }
       };
@@ -101,9 +87,9 @@ export function useVoiceNote(options: Options = {}) {
     isRecording,
     isProcessing,
     error,
-    result,
+    result: computed(() => result.value),
     startRecording,
     stopRecording,
-    processFile,
   };
 }
+

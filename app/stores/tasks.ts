@@ -9,8 +9,9 @@ export const useTaskStore = defineStore("tasks", () => {
   const selectedProjectId = ref<string | null>(null);
 
   const filteredTasks = computed(() => {
-    if (!selectedProjectId.value) return tasks.value;
-    return tasks.value.filter((t) => t.project_id === selectedProjectId.value);
+    const active = tasks.value.filter((t) => t.status !== TaskStatus.COMPLETED);
+    if (!selectedProjectId.value) return active;
+    return active.filter((t) => t.project_id === selectedProjectId.value);
   });
 
   const tasksByStatus = computed(() => {

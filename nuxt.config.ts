@@ -4,6 +4,9 @@ import { fileURLToPath } from "node:url";
 export default defineNuxtConfig({
   compatibilityDate: "2024-11-01",
   devtools: { enabled: true },
+  build: {
+    transpile: ["@vuepic/vue-datepicker"],
+  },
   runtimeConfig: {
     openaiApiKey: process.env.NUXT_PUBLIC_OPENAI_API_KEY,
     public: {

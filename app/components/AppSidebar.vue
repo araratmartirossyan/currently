@@ -2,6 +2,7 @@
 import {
   BadgeCheck,
   Bell,
+  CalendarDays,
   ChevronsUpDown,
   CreditCard,
   FolderKanban,
@@ -59,6 +60,11 @@ const data = {
       isActive: true,
     },
     {
+      title: "Calendar",
+      url: "/calendar",
+      icon: CalendarDays,
+    },
+    {
       title: "Projects",
       url: "/projects",
       icon: FolderKanban,
@@ -69,6 +75,12 @@ const data = {
       icon: Settings,
     },
   ],
+};
+
+const team = data.teams[0] ?? {
+  name: "Currently",
+  logo: GalleryVerticalEnd,
+  plan: "",
 };
 
 const handleLinkClick = () => {
@@ -95,11 +107,11 @@ const handleLogout = () => {
                 <div
                   class="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg"
                 >
-                  <component :is="data.teams[0].logo" class="size-4" />
+                  <component :is="team.logo" class="size-4" />
                 </div>
                 <div class="grid flex-1 text-left text-sm leading-tight">
-                  <span class="truncate font-semibold">{{ data.teams[0].name }}</span>
-                  <span class="truncate text-xs">{{ data.teams[0].plan }}</span>
+                  <span class="truncate font-semibold">{{ team.name }}</span>
+                  <span class="truncate text-xs">{{ team.plan }}</span>
                 </div>
               </SidebarMenuButton>
             </DropdownMenuTrigger>

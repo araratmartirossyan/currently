@@ -11,4 +11,5 @@ import { Toaster } from "@/components/ui/sonner";
 
 <style>
 @import "@/assets/css/tailwind.css";
+@import "@vuepic/vue-datepicker/dist/main.css";
 </style>

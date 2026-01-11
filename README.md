@@ -1,6 +1,8 @@
-# Nuxt Minimal Starter
+# Currently
 
-Look at the [Nuxt documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
+Task + meetings app (Nuxt 3 + Supabase + Schedule‑X).
+
+See `PROJECT_INSTRUCTIONS.md` for setup, migrations, and workflows.
 
 ## Setup
 

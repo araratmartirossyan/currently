@@ -19,7 +19,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <Card class="border-none bg-slate-50/80 shadow-sm">
+  <Card class="bg-slate-50/80 shadow-sm">
     <CardContent class="space-y-6 p-4 text-sm text-slate-700">
       <div class="space-y-3">
         <p class="text-xs tracking-[0.2em] text-slate-500 uppercase">Projects</p>

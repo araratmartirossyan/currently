@@ -18,6 +18,8 @@ export interface Database {
           created_at: string;
           updated_at: string;
           deadline: string | null;
+          start_at: string | null;
+          end_at: string | null;
         };
         Insert: {
           id?: string;
@@ -33,6 +35,8 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
           deadline?: string | null;
+          start_at?: string | null;
+          end_at?: string | null;
         };
         Update: {
           id?: string;
@@ -48,6 +52,8 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
           deadline?: string | null;
+          start_at?: string | null;
+          end_at?: string | null;
         };
         Relationships: [];
       };
@@ -78,6 +84,63 @@ export interface Database {
           category?: string | null;
           subcategory?: string | null;
           created_at?: string;
+        };
+        Relationships: [];
+      };
+      calendar_events: {
+        Row: {
+          id: string;
+          project_id: string | null;
+          title: string;
+          description: string | null;
+          location: string | null;
+          start_at: string;
+          end_at: string;
+          is_all_day: boolean;
+          rrule: string | null;
+          exdates: string[] | null;
+          source: string;
+          source_uid: string | null;
+          source_calendar: string | null;
+          raw_payload: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_id?: string | null;
+          title: string;
+          description?: string | null;
+          location?: string | null;
+          start_at: string;
+          end_at: string;
+          is_all_day?: boolean;
+          rrule?: string | null;
+          exdates?: string[] | null;
+          source?: string;
+          source_uid?: string | null;
+          source_calendar?: string | null;
+          raw_payload?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          project_id?: string | null;
+          title?: string;
+          description?: string | null;
+          location?: string | null;
+          start_at?: string;
+          end_at?: string;
+          is_all_day?: boolean;
+          rrule?: string | null;
+          exdates?: string[] | null;
+          source?: string;
+          source_uid?: string | null;
+          source_calendar?: string | null;
+          raw_payload?: string | null;
+          created_at?: string;
+          updated_at?: string;
         };
         Relationships: [];
       };

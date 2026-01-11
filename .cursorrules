@@ -1,0 +1,41 @@
+You are an AI coding agent working in this repository.
+
+## UI / UX conventions (MANDATORY)
+- Add `cursor-pointer` to all interactive UI elements:
+  - any element with `@click`, clickable `button`, `a`, `select`, checkbox + its label.
+  - If using third‑party UI (e.g. Schedule‑X), add scoped CSS overrides to enforce pointer cursor.
+- If a list has zero items, show an explicit **empty state** (no blank cards/blocks).
+- Clicking calendar items must open an edit popup with **edit + delete** actions.
+
+## Code quality conventions (MANDATORY)
+- Keep Vue components small. If a component grows > ~120 lines or has complex logic:
+  - move logic into a composable in `app/composables/`
+  - move pure helpers into `app/helpers/`
+- Do not introduce `any`. Prefer narrow unions and `unknown` + type guards.
+- Prefer store-level filtering for global behavior (e.g. hiding completed tasks).
+
+## Libraries / docs
+- When integrating external libraries, validate usage against the latest docs (Dec 2025+).
+- Schedule‑X:
+  - event ids must be querySelector-safe (letters/digits/_/-)
+  - use Temporal types (`Temporal.ZonedDateTime` / `Temporal.PlainDate`) for start/end
+
+  Use yarn
+
+
+  # Project Instructions
+## Code Style
+
+- Maximize split code
+- Maximize code re-usage
+- Create utils, helpers, constants in corresponded folders.
+- Always split big chunk of code, starting from 300 lines.
+- Explicitly declare all types
+- Avoid using any type
+  
+## Architecture
+- Follow the repository pattern
+- Keep business logic in service layers
+- Run Linter and build after each task
+- Update documentation after updating logi
+- move logic into hooks, do not overgrow components

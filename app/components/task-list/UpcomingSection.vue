@@ -3,10 +3,12 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { Task } from "@/types";
+import { formatTaskLastDay } from "@/helpers/tasks/display";
 
-defineProps<{
+const props = defineProps<{
   upcomingList: Task[];
   statusColors: Record<string, string>;
+  projectNameById: Record<string, string>;
 }>();
 
 const emit = defineEmits<{
@@ -15,7 +17,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <Card class="border-none shadow-sm">
+  <Card class="shadow-sm">
     <CardContent class="p-0">
       <div class="divide-y">
         <div
@@ -33,9 +35,13 @@ const emit = defineEmits<{
             <p class="leading-tight font-medium text-slate-900">
               {{ task.title || "Untitled task" }}
             </p>
-            <p class="text-sm text-slate-500">
-              {{ task.description || "No description provided." }}
-            </p>
+            <div class="text-sm text-slate-500">
+              <span v-if="task.project_id">{{
+                props.projectNameById[task.project_id] || "Project"
+              }}</span>
+              <span v-if="task.project_id && formatTaskLastDay(task)"> · </span>
+              <span v-if="formatTaskLastDay(task)">Last day {{ formatTaskLastDay(task) }}</span>
+            </div>
           </div>
           <Badge
             variant="outline"

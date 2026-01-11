@@ -12,6 +12,9 @@ export default defineEventHandler(async (event) => {
   const audioFile = formData.find((f) => f.name === "audio");
   if (!audioFile) throw createError({ statusCode: 400, message: "No audio file" });
 
+  const timezoneField = formData.find((f) => f.name === "timezone");
+  const timezone = timezoneField?.data ? String(timezoneField.data) : "Unknown";
+
   // Optional project list to help mapping
   const projectsField = formData.find((f) => f.name === "projects");
   let projectList: string[] = [];
@@ -24,8 +27,10 @@ export default defineEventHandler(async (event) => {
   }
 
   // 1. Transcribe
+  // `audioFile.data` is a Node Buffer; convert to Uint8Array for DOM `BlobPart` compatibility
+  const audioBytes = new Uint8Array(audioFile.data);
   const transcription = await openai.audio.transcriptions.create({
-    file: new File([audioFile.data], "audio.webm", { type: "audio/webm" }),
+    file: new File([audioBytes], "audio.webm", { type: "audio/webm" }),
     model: "whisper-1",
   });
 
@@ -37,7 +42,9 @@ export default defineEventHandler(async (event) => {
     messages: [
       {
         role: "system",
-        content: `You are a task management assistant. Use this known project list: [${projectList.join(", ")}].
+        content: `You are a task management assistant.
+User timezone: ${timezone}
+Use this known project list: [${projectList.join(", ")}].
 - If the text mentions a project that matches (case-insensitive, partial is ok), return the exact name from the list.
 - If no match, set project to null.
 - Always return a non-empty title; if unclear, generate a concise 6-10 word summary.
@@ -47,7 +54,15 @@ Return JSON with:
   project (string|null)
   priority (one of: low, medium, high, urgent)
   tags (string array)
-  deadline (ISO string or null)
+  deadline (ISO string or null)  // due date/time
+  start_at (ISO string or null)  // scheduled start time (task time block)
+  end_at (ISO string or null)    // scheduled end time (task time block)
+
+Rules:
+- If the user specifies a time block (e.g. "tomorrow 3-5pm", "for 2 hours at 4pm"), set start_at/end_at.
+- If only start time is given, assume 1 hour duration for end_at.
+- If the user specifies a due date ("by Friday", "deadline Monday"), set deadline.
+- If both are mentioned, return both.
 
 Text: "${text}"`,
       },
@@ -66,6 +81,8 @@ Text: "${text}"`,
     priority?: "low" | "medium" | "high" | "urgent";
     tags?: string[];
     deadline?: string | null;
+    start_at?: string | null;
+    end_at?: string | null;
   };
 
   let extracted: Extracted = {};

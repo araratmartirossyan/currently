@@ -12,16 +12,27 @@ import EditTaskDialog from "@/components/task-list/EditTaskDialog.vue";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Task } from "@/types";
+import ScheduleXCalendarView from "@/components/calendar/ScheduleXCalendarView.client.vue";
 
 const taskStore = useTaskStore();
 const projectStore = useProjectStore();
-const { tasks } = storeToRefs(taskStore);
+const { filteredTasks } = storeToRefs(taskStore);
 const { projects } = storeToRefs(projectStore);
+
+const projectColorById = computed<Record<string, string | null>>(() => {
+  return Object.fromEntries(projects.value.map((p) => [p.id, p.color || null]));
+});
+
+const projectNameById = computed<Record<string, string>>(() => {
+  return Object.fromEntries(projects.value.map((p) => [p.id, p.name]));
+});
+
+const viewMode = ref<"list" | "calendar">("list");
 
 const selectedDateRange = ref<DateRangeFilter>("all");
 
 const { todayList, upcomingList, upcomingDeadlines, filterCounts } = useTaskFilters({
-  tasks,
+  tasks: filteredTasks,
   selectedProjectId: computed(() => taskStore.selectedProjectId),
   selectedDateRange,
 });
@@ -47,7 +58,10 @@ const closeEdit = () => {
 };
 
 const saveEdit = async (
-  payload: Pick<Task, "title" | "description" | "status" | "project_id" | "deadline">
+  payload: Pick<
+    Task,
+    "title" | "description" | "status" | "project_id" | "start_at" | "end_at"
+  >
 ) => {
   if (!editingTask.value) return;
   try {
@@ -68,6 +82,8 @@ const toggleComplete = async (task: Task) => {
     console.error("Failed to toggle status", e);
   }
 };
+
+const hasAnyTasks = computed(() => taskStore.filteredTasks.length > 0);
 </script>
 
 <template>
@@ -90,63 +106,108 @@ const toggleComplete = async (task: Task) => {
         <div class="space-y-6">
           <div class="flex items-center gap-4">
             <h2 class="text-3xl font-semibold tracking-tight">Today Task</h2>
+            <Tabs v-model="viewMode" class="w-auto">
+              <TabsList class="bg-slate-100/60">
+                <TabsTrigger value="list">List</TabsTrigger>
+                <TabsTrigger value="calendar">Calendar</TabsTrigger>
+              </TabsList>
+            </Tabs>
             <div class="flex items-center gap-3 text-sm text-slate-500">
               <span class="flex items-center gap-1 text-base font-semibold text-slate-700">{{
                 filterCounts.all
-              }}</span
-              ><span>All</span>
-              <span class="flex items-center gap-1">{{ filterCounts.important }}</span
-              ><span>Important</span>
-              <span class="flex items-center gap-1">{{ filterCounts.notes }}</span
-              ><span>Notes</span>
-              <span class="flex items-center gap-1">{{ filterCounts.links }}</span
-              ><span>Links</span>
+              }}</span>
             </div>
           </div>
 
-          <Tabs default-value="today" class="w-full">
-            <TabsList class="bg-slate-100/60">
-              <TabsTrigger value="today">Today</TabsTrigger>
-              <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
-            </TabsList>
+          <template v-if="viewMode === 'list'">
+            <div
+              v-if="!hasAnyTasks"
+              class="rounded-lg border border-dashed border-slate-200 bg-white/60 p-10 text-center"
+            >
+              <div class="text-lg font-semibold text-slate-900">No tasks yet</div>
+              <div class="mt-1 text-sm text-slate-500">
+                Create your first task to see it here (and on the calendar).
+              </div>
+            </div>
 
-            <TabsContent value="today" class="mt-4">
-              <TaskListBlock
-                :today-list="todayList"
+            <Tabs v-else default-value="today" class="w-full">
+              <TabsList class="bg-slate-100/60">
+                <TabsTrigger value="today">Today</TabsTrigger>
+                <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="today" class="mt-4">
+                <TaskListBlock
+                  :today-list="todayList"
+                  :upcoming-list="upcomingList"
+                  :status-colors="statusColors"
+                  :project-name-by-id="projectNameById"
+                  @toggle="toggleComplete"
+                  @edit="openEdit"
+                />
+              </TabsContent>
+
+              <TabsContent value="upcoming" class="mt-4">
+                <TaskListBlock
+                  :today-list="upcomingList"
+                  :upcoming-list="[]"
+                  :status-colors="statusColors"
+                  :project-name-by-id="projectNameById"
+                  @toggle="toggleComplete"
+                  @edit="openEdit"
+                />
+              </TabsContent>
+            </Tabs>
+
+            <div v-if="hasAnyTasks" class="space-y-3">
+              <h3 class="text-lg font-semibold">Upcoming Tasks</h3>
+              <UpcomingSection
                 :upcoming-list="upcomingList"
                 :status-colors="statusColors"
+                :project-name-by-id="projectNameById"
                 @toggle="toggleComplete"
                 @edit="openEdit"
               />
-            </TabsContent>
+            </div>
+          </template>
 
-            <TabsContent value="upcoming" class="mt-4">
-              <TaskListBlock
-                :today-list="upcomingList"
-                :upcoming-list="[]"
-                :status-colors="statusColors"
-                @toggle="toggleComplete"
-                @edit="openEdit"
+          <template v-else>
+            <client-only>
+              <ScheduleXCalendarView
+                mode="tasks"
+                :meetings="[]"
+                :tasks="taskStore.filteredTasks"
+                :project-color-by-id="projectColorById"
+                :project-name-by-id="projectNameById"
+                @range-change="() => {}"
+                @event-click="
+                  ({ kind, id }) => {
+                    if (kind !== 'task') return;
+                    const t = taskStore.tasks.find((x) => x.id === id);
+                    if (t) openEdit(t);
+                  }
+                "
               />
-            </TabsContent>
-          </Tabs>
-
-          <div class="space-y-3">
-            <h3 class="text-lg font-semibold">Upcoming Tasks</h3>
-            <UpcomingSection
-              :upcoming-list="upcomingList"
-              :status-colors="statusColors"
-              @toggle="toggleComplete"
-              @edit="openEdit"
-            />
-          </div>
+            </client-only>
+          </template>
         </div>
       </ScrollArea>
     </div>
 
     <div class="h-full min-h-0 lg:col-span-1">
       <ScrollArea class="h-full pr-1">
-        <UpcomingEvents :tasks="upcomingDeadlines" @edit="openEdit" />
+        <div
+          v-if="!hasAnyTasks"
+          class="rounded-lg border border-dashed border-slate-200 bg-white/60 p-6 text-sm text-slate-500"
+        >
+          No upcoming events yet.
+        </div>
+        <UpcomingEvents
+          v-else
+          :tasks="upcomingDeadlines"
+          :project-name-by-id="projectNameById"
+          @edit="openEdit"
+        />
       </ScrollArea>
     </div>
   </div>
@@ -157,5 +218,11 @@ const toggleComplete = async (task: Task) => {
     :projects="projects"
     @close="closeEdit"
     @save="saveEdit"
+    @delete="
+      async (id) => {
+        await taskStore.deleteTaskRemote(id);
+        closeEdit();
+      }
+    "
   />
 </template>

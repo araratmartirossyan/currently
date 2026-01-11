@@ -18,6 +18,12 @@ import { useTaskStore } from "@/stores/tasks";
 import { useProjectStore } from "@/stores/projects";
 import { useVoiceNote } from "@/composables/useVoiceNote";
 import { useTaskForm } from "@/composables/useTaskForm";
+import type { TaskFormValues } from "@/composables/useTaskForm";
+
+const props = defineProps<{
+  initialStart?: Date | null;
+  initialEnd?: Date | null;
+}>();
 
 const emit = defineEmits<{
   (e: "created" | "cancel"): void;
@@ -41,11 +47,22 @@ const {
   status,
   category,
   subcategory,
-  deadline,
+  start_at,
+  end_at,
   applyVoiceResult,
   toInsert,
   isValidTitle,
-} = useTaskForm();
+} = useTaskForm({
+  initialValues: computed<Partial<TaskFormValues>>(() => {
+    if (!props.initialStart) return {};
+    const start = props.initialStart;
+    const end = props.initialEnd || new Date(start.getTime() + 60 * 60 * 1000);
+    return {
+      start_at: new Date(start).toISOString().slice(0, 16),
+      end_at: new Date(end).toISOString().slice(0, 16),
+    };
+  }).value,
+});
 
 onMounted(async () => {
   try {
@@ -144,7 +161,7 @@ const onCancel = () => {
           <label class="text-sm font-medium">Priority</label>
           <select
             v-model="priority"
-            class="border-input bg-background flex h-10 w-full rounded-md border px-3 py-2 text-sm"
+            class="border-input bg-background flex h-10 w-full cursor-pointer rounded-md border px-3 py-2 text-sm"
           >
             <option value="low">Low</option>
             <option value="medium">Medium</option>
@@ -159,7 +176,7 @@ const onCancel = () => {
           <label class="text-sm font-medium">Status</label>
           <select
             v-model="status"
-            class="border-input bg-background flex h-10 w-full rounded-md border px-3 py-2 text-sm"
+            class="border-input bg-background flex h-10 w-full cursor-pointer rounded-md border px-3 py-2 text-sm"
           >
             <option value="pending">Pending</option>
             <option value="in_progress">In Progress</option>
@@ -167,9 +184,16 @@ const onCancel = () => {
             <option value="cancelled">Cancelled</option>
           </select>
         </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
         <div class="grid gap-2">
-          <label class="text-sm font-medium">Deadline</label>
-          <Input type="date" v-model="deadline" />
+          <label class="text-sm font-medium">Start</label>
+          <Input type="datetime-local" v-model="start_at" />
+        </div>
+        <div class="grid gap-2">
+          <label class="text-sm font-medium">End</label>
+          <Input type="datetime-local" v-model="end_at" />
         </div>
       </div>
 

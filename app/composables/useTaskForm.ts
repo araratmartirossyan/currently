@@ -1,37 +1,35 @@
 import { computed } from "vue";
 import { useForm, useField } from "vee-validate";
 import * as yup from "yup";
-import type { Project, TaskPriority, TaskStatus } from "@/types";
+import type { Project } from "@/types";
+import { TaskPriority, TaskStatus } from "@/types";
 import type { VoiceNoteResponse } from "@/composables/useVoiceNote";
 import type { Database } from "~/types/database.types";
+import { isoToDateTimeLocalInput } from "@/helpers/datetime/inputs";
 
 export type TaskFormValues = {
   title: string;
   description: string;
   project_id: string; // "none" or uuid
-  priority: "low" | "medium" | "high" | "urgent";
-  status: "pending" | "in_progress" | "completed" | "cancelled";
+  priority: TaskPriority;
+  status: TaskStatus;
   category: string;
   subcategory: string;
-  // date input string: "YYYY-MM-DD" or ""
-  deadline: string;
+  // datetime-local input string: "YYYY-MM-DDTHH:mm" or ""
+  start_at: string;
+  end_at: string;
 };
 
 const schema = yup.object({
   title: yup.string().required("Title is required"),
   description: yup.string().optional(),
   project_id: yup.string().optional(),
-  priority: yup
-    .mixed<TaskFormValues["priority"]>()
-    .oneOf(["low", "medium", "high", "urgent"])
-    .required(),
-  status: yup
-    .mixed<TaskFormValues["status"]>()
-    .oneOf(["pending", "in_progress", "completed", "cancelled"])
-    .required(),
+  priority: yup.mixed<TaskPriority>().oneOf(Object.values(TaskPriority)).required(),
+  status: yup.mixed<TaskStatus>().oneOf(Object.values(TaskStatus)).required(),
   category: yup.string().optional(),
   subcategory: yup.string().optional(),
-  deadline: yup.string().optional(),
+  start_at: yup.string().optional(),
+  end_at: yup.string().optional(),
 });
 
 type Options = {
@@ -45,11 +43,12 @@ export function useTaskForm(options: Options = {}) {
       title: "",
       description: "",
       project_id: "none",
-      priority: "medium",
-      status: "pending",
+      priority: TaskPriority.MEDIUM,
+      status: TaskStatus.PENDING,
       category: "",
       subcategory: "",
-      deadline: "",
+      start_at: "",
+      end_at: "",
       ...options.initialValues,
     },
   });
@@ -57,11 +56,12 @@ export function useTaskForm(options: Options = {}) {
   const { value: title } = useField<string>("title");
   const { value: description } = useField<string>("description");
   const { value: project_id } = useField<string>("project_id");
-  const { value: priority } = useField<TaskFormValues["priority"]>("priority");
-  const { value: status } = useField<TaskFormValues["status"]>("status");
+  const { value: priority } = useField<TaskPriority>("priority");
+  const { value: status } = useField<TaskStatus>("status");
   const { value: category } = useField<string>("category");
   const { value: subcategory } = useField<string>("subcategory");
-  const { value: deadline } = useField<string>("deadline");
+  const { value: start_at } = useField<string>("start_at");
+  const { value: end_at } = useField<string>("end_at");
 
   function applyVoiceResult(response: VoiceNoteResponse | null | undefined, projects: Project[]) {
     if (!response?.extracted) return;
@@ -83,11 +83,16 @@ export function useTaskForm(options: Options = {}) {
       title: response.extracted.title || title.value,
       description: descriptionValue || description.value,
       project_id: matched ? matched.id : project_id.value,
-      priority: (response.extracted.priority as TaskFormValues["priority"]) || priority.value,
+      priority: response.extracted.priority || priority.value,
       status: status.value,
       category: category.value || "",
       subcategory: subcategory.value || "",
-      deadline: deadline.value || "",
+      start_at: response.extracted.start_at
+        ? isoToDateTimeLocalInput(response.extracted.start_at)
+        : start_at.value || "",
+      end_at: response.extracted.end_at
+        ? isoToDateTimeLocalInput(response.extracted.end_at)
+        : end_at.value || "",
     });
   }
 
@@ -99,9 +104,10 @@ export function useTaskForm(options: Options = {}) {
       project_id: projectId,
       category: values.category?.trim() ? values.category.trim() : null,
       subcategory: values.subcategory?.trim() ? values.subcategory.trim() : null,
-      deadline: values.deadline ? new Date(values.deadline).toISOString() : null,
-      priority: values.priority as TaskPriority,
-      status: values.status as TaskStatus,
+      start_at: values.start_at ? new Date(values.start_at).toISOString() : null,
+      end_at: values.end_at ? new Date(values.end_at).toISOString() : null,
+      priority: values.priority,
+      status: values.status,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       attachments: [],
@@ -122,10 +128,12 @@ export function useTaskForm(options: Options = {}) {
       payload.category = values.category?.trim() ? values.category.trim() : null;
     if (values.subcategory !== undefined)
       payload.subcategory = values.subcategory?.trim() ? values.subcategory.trim() : null;
-    if (values.deadline !== undefined)
-      payload.deadline = values.deadline ? new Date(values.deadline).toISOString() : null;
-    if (values.priority !== undefined) payload.priority = values.priority as TaskPriority;
-    if (values.status !== undefined) payload.status = values.status as TaskStatus;
+    if (values.start_at !== undefined)
+      payload.start_at = values.start_at ? new Date(values.start_at).toISOString() : null;
+    if (values.end_at !== undefined)
+      payload.end_at = values.end_at ? new Date(values.end_at).toISOString() : null;
+    if (values.priority !== undefined) payload.priority = values.priority;
+    if (values.status !== undefined) payload.status = values.status;
     payload.updated_at = new Date().toISOString();
     return payload;
   }
@@ -146,7 +154,8 @@ export function useTaskForm(options: Options = {}) {
     status,
     category,
     subcategory,
-    deadline,
+    start_at,
+    end_at,
 
     // helpers
     isValidTitle,

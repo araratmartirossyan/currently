@@ -26,6 +26,8 @@ export interface Task {
   created_at: string;
   updated_at: string;
   deadline?: string | null;
+  start_at?: string | null;
+  end_at?: string | null;
 }
 
 export interface Project {
@@ -36,4 +38,25 @@ export interface Project {
   category?: string | null;
   subcategory?: string | null;
   created_at: string;
+}
+
+export type CalendarEventSource = "import" | "manual" | "google" | "outlook";
+
+export interface CalendarEvent {
+  id: string;
+  project_id?: string | null;
+  title: string;
+  description?: string | null;
+  location?: string | null;
+  start_at: string;
+  end_at: string;
+  is_all_day: boolean;
+  rrule?: string | null;
+  exdates?: string[] | null;
+  source: CalendarEventSource | string;
+  source_uid?: string | null;
+  source_calendar?: string | null;
+  raw_payload?: string | null;
+  created_at: string;
+  updated_at: string;
 }

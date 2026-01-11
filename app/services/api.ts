@@ -1,6 +1,6 @@
 import { useSupabaseClient } from "#imports";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Task, Project } from "@/types";
+import type { CalendarEvent, Project, Task } from "@/types";
 import type { Database } from "~/types/database.types";
 
 export const taskService = {
@@ -86,5 +86,63 @@ export const projectService = {
 
     const { error } = await supabase.from("projects").delete().eq("id", id);
     if (error) throw error;
+  },
+};
+
+export const calendarEventService = {
+  async getEventsInRange(startIso: string, endIso: string) {
+    const supabase = useSupabaseClient() as SupabaseClient<Database>;
+    // overlap query: start < endIso AND end > startIso
+    const { data, error } = await supabase
+      .from("calendar_events")
+      .select("*")
+      .lt("start_at", endIso)
+      .gt("end_at", startIso)
+      .order("start_at", { ascending: true });
+
+    if (error) throw error;
+    return data as CalendarEvent[];
+  },
+
+  async createEvent(event: Database["public"]["Tables"]["calendar_events"]["Insert"]) {
+    const supabase = useSupabaseClient() as SupabaseClient<Database>;
+    const { data, error } = await supabase.from("calendar_events").insert(event).select().single();
+    if (error) throw error;
+    return data as CalendarEvent;
+  },
+
+  async updateEvent(
+    id: string,
+    updates: Database["public"]["Tables"]["calendar_events"]["Update"]
+  ) {
+    const supabase = useSupabaseClient() as SupabaseClient<Database>;
+    const { data, error } = await supabase
+      .from("calendar_events")
+      .update(updates)
+      .eq("id", id)
+      .select()
+      .single();
+    if (error) throw error;
+    return data as CalendarEvent;
+  },
+
+  async deleteEvent(id: string) {
+    const supabase = useSupabaseClient() as SupabaseClient<Database>;
+    const { error } = await supabase.from("calendar_events").delete().eq("id", id);
+    if (error) throw error;
+  },
+
+  async upsertEvents(
+    events: Database["public"]["Tables"]["calendar_events"]["Insert"][],
+    onConflict: string = "source,source_uid"
+  ) {
+    const supabase = useSupabaseClient() as SupabaseClient<Database>;
+    const { data, error } = await supabase
+      .from("calendar_events")
+      .upsert(events, { onConflict })
+      .select();
+
+    if (error) throw error;
+    return data as CalendarEvent[];
   },
 };

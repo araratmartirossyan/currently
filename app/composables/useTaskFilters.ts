@@ -13,18 +13,25 @@ interface Options {
 export function useTaskFilters({ tasks, selectedProjectId, selectedDateRange }: Options) {
   const todayStart = computed(() => startOfDay(new Date()));
 
+  function taskLastDate(task: Task): Date | null {
+    const iso = task.end_at || task.start_at || task.deadline || null;
+    if (!iso) return null;
+    const d = new Date(iso);
+    return isValid(d) ? d : null;
+  }
+
   const filteredTasks = computed(() => {
     return tasks.value.filter((t) => {
+      if (t.status === "completed") return false;
       if (selectedProjectId.value) {
         if (t.project_id !== selectedProjectId.value) return false;
       }
 
       if (selectedDateRange.value) {
         if (selectedDateRange.value === "all") return true;
-        if (!t.deadline) return false;
-        const d = new Date(t.deadline);
-        if (!isValid(d)) return false;
-        const diffDays = differenceInCalendarDays(startOfDay(d), todayStart.value);
+        const last = taskLastDate(t);
+        if (!last) return false;
+        const diffDays = differenceInCalendarDays(startOfDay(last), todayStart.value);
         if (selectedDateRange.value === "today" && diffDays !== 0) return false;
         if (selectedDateRange.value === "tomorrow" && diffDays !== 1) return false;
         if (selectedDateRange.value === "7" && !(diffDays >= 0 && diffDays <= 7)) return false;
@@ -45,27 +52,28 @@ export function useTaskFilters({ tasks, selectedProjectId, selectedDateRange }: 
     filteredTasks.value
       .filter((t) => t.status !== "completed")
       .slice()
-      .sort((a, b) => (a.deadline || "").localeCompare(b.deadline || ""))
+      .sort((a, b) => (taskLastDate(a)?.toISOString() || "").localeCompare(taskLastDate(b)?.toISOString() || ""))
   );
 
   const upcomingDeadlines = computed(() =>
     tasks.value
-      .filter((t) => t.deadline && isValid(new Date(t.deadline)))
+      .filter((t) => t.status !== "completed")
+      .filter((t) => Boolean(taskLastDate(t)))
       .filter((t) => {
-        const d = new Date(t.deadline as string);
+        const d = taskLastDate(t) as Date;
         const daysLeft = differenceInCalendarDays(startOfDay(d), todayStart.value);
         // Upcoming events in next 1-3 days
         return daysLeft >= 1 && daysLeft <= 3;
       })
-      .sort((a, b) => (a.deadline || "").localeCompare(b.deadline || ""))
+      .sort((a, b) => (taskLastDate(a)?.toISOString() || "").localeCompare(taskLastDate(b)?.toISOString() || ""))
       .slice(0, 3)
   );
 
   const filterCounts = computed(() => ({
-    all: tasks.value.length,
-    important: tasks.value.filter((t) => t.priority === "high" || t.priority === "urgent").length,
-    notes: tasks.value.filter((t) => t.tags?.length).length,
-    links: tasks.value.filter((t) => t.attachments?.length).length,
+    all: filteredTasks.value.length,
+    important: filteredTasks.value.filter((t) => t.priority === "high" || t.priority === "urgent").length,
+    notes: filteredTasks.value.filter((t) => t.tags?.length).length,
+    links: filteredTasks.value.filter((t) => t.attachments?.length).length,
   }));
 
   return {
