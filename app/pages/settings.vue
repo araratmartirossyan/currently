@@ -1,16 +1,17 @@
 <script setup lang="ts">
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { useTheme } from "@/composables/useTheme";
+
+const { theme, setTheme } = useTheme();
 </script>
 
 <template>
   <div class="mx-auto max-w-4xl space-y-8">
     <div>
       <h2 class="text-3xl font-bold tracking-tight">Settings</h2>
-      <p class="text-muted-foreground">Manage your account settings and preferences.</p>
+      <p class="text-muted-foreground">Customize your app experience.</p>
     </div>
 
     <Separator />
@@ -18,34 +19,36 @@ import { Separator } from "@/components/ui/separator";
     <div class="grid gap-8">
       <Card>
         <CardHeader>
-          <CardTitle>Profile</CardTitle>
-          <CardDescription> This is how others will see you on the platform. </CardDescription>
-        </CardHeader>
-        <CardContent class="space-y-4">
-          <div class="grid gap-2">
-            <Label for="username">Username</Label>
-            <Input id="username" placeholder="ararat" />
-          </div>
-          <div class="grid gap-2">
-            <Label for="email">Email</Label>
-            <Input id="email" type="email" placeholder="name@example.com" />
-          </div>
-          <Button>Update Profile</Button>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
           <CardTitle>Appearance</CardTitle>
           <CardDescription> Customize the look and feel of your dashboard. </CardDescription>
         </CardHeader>
         <CardContent class="space-y-4">
-          <div class="flex items-center justify-between">
+          <div class="flex flex-wrap items-center justify-between gap-3">
             <div class="space-y-0.5">
-              <Label>Dark Mode</Label>
-              <p class="text-muted-foreground text-sm">Toggle between light and dark themes.</p>
+              <p class="text-sm font-medium">Theme</p>
+              <p class="text-muted-foreground text-sm">Switch between light and dark mode.</p>
             </div>
-            <Button variant="outline">System</Button>
+
+            <div class="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                class="cursor-pointer"
+                :disabled="theme === 'light'"
+                @click="setTheme('light')"
+              >
+                Light
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                class="cursor-pointer"
+                :disabled="theme === 'dark'"
+                @click="setTheme('dark')"
+              >
+                Dark
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

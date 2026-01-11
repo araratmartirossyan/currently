@@ -40,7 +40,7 @@ const items = computed(() => {
         <span class="text-muted-foreground text-xs">next 3 days</span>
       </div>
 
-      <div v-if="!items.length" class="text-sm text-slate-500">
+      <div v-if="!items.length" class="text-sm text-muted-foreground">
         No tasks due in the next 3 days.
       </div>
 
@@ -48,22 +48,22 @@ const items = computed(() => {
         <button
           v-for="{ task, d, daysLeft } in items"
           :key="task.id"
-          class="flex w-full cursor-pointer items-center justify-between gap-3 rounded-md border border-slate-200 bg-white/70 px-3 py-2 text-left hover:bg-white"
+          class="flex w-full cursor-pointer items-center justify-between gap-3 rounded-md border bg-muted/30 px-3 py-2 text-left hover:bg-muted/50"
           @click="emit('edit', task)"
         >
           <div class="min-w-0">
-            <div class="truncate font-medium text-slate-900">
+            <div class="truncate font-medium text-foreground">
               {{
                 task.project_id && projectNameById[task.project_id]
                   ? `${projectNameById[task.project_id]} · `
                   : ""
               }}{{ task.title || "Untitled task" }}
             </div>
-            <div class="text-xs text-slate-500">
+            <div class="text-xs text-muted-foreground">
               {{ format(d, "EEE, MMM dd") }}
             </div>
           </div>
-          <Badge variant="outline" class="shrink-0 border-slate-200 text-slate-600">
+          <Badge variant="outline" class="shrink-0 text-muted-foreground">
             D-{{ daysLeft }}
           </Badge>
         </button>

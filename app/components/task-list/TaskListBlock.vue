@@ -24,7 +24,7 @@ const emit = defineEmits<{
         <div
           v-for="task in todayList"
           :key="task.id"
-          class="flex cursor-pointer items-center gap-3 px-5 py-4 hover:bg-slate-50/80"
+          class="hover:bg-muted/40 flex cursor-pointer items-center gap-3 px-5 py-4"
           @click="emit('edit', task)"
         >
           <Checkbox
@@ -34,7 +34,7 @@ const emit = defineEmits<{
           />
           <div class="flex-1 space-y-1">
             <div class="flex items-center gap-2">
-              <p class="leading-tight font-medium text-slate-900">
+              <p class="text-foreground leading-tight font-medium">
                 {{ task.title || "Untitled task" }}
               </p>
               <Badge

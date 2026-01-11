@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import type { CalendarEvent, Task } from "@/types";
 import { useScheduleXCalendar } from "@/composables/useScheduleXCalendar";
+import { useTheme } from "@/composables/useTheme";
 
 // Schedule-X (client-only component)
 import { ScheduleXCalendar } from "@schedule-x/vue";
@@ -22,6 +24,9 @@ const emit = defineEmits<{
   (e: "slotClick", payload: { date: Date; isAllDay: boolean }): void;
 }>();
 
+const { theme } = useTheme();
+const scheduleXThemeClass = computed(() => (theme.value === "dark" ? "is-dark" : ""));
+
 const { calendarApp } = useScheduleXCalendar({
   mode: () => props.mode,
   meetings: () => props.meetings,
@@ -36,7 +41,7 @@ const { calendarApp } = useScheduleXCalendar({
 </script>
 
 <template>
-  <div class="sx-vue-calendar-wrapper">
+  <div class="sx-vue-calendar-wrapper" :class="scheduleXThemeClass">
     <ScheduleXCalendar :calendar-app="calendarApp" />
   </div>
 </template>

@@ -19,25 +19,25 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <Card class="bg-slate-50/80 shadow-sm">
-    <CardContent class="space-y-6 p-4 text-sm text-slate-700">
+  <Card class="bg-card/70 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/50">
+    <CardContent class="space-y-6 p-4 text-sm text-foreground">
       <div class="space-y-3">
-        <p class="text-xs tracking-[0.2em] text-slate-500 uppercase">Projects</p>
+        <p class="text-xs tracking-[0.2em] text-muted-foreground uppercase">Projects</p>
         <div class="space-y-2">
           <button
-            class="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1 text-left transition hover:bg-white/70"
-            :class="!selectedProjectId ? 'font-semibold text-slate-900' : 'text-slate-700'"
+            class="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1 text-left transition hover:bg-muted/60"
+            :class="!selectedProjectId ? 'font-semibold text-foreground' : 'text-muted-foreground'"
             @click="emit('select-project', null)"
           >
-            <span class="size-2 rounded-full bg-slate-300"></span>
+            <span class="size-2 rounded-full bg-muted-foreground/40"></span>
             <span>All Projects</span>
           </button>
           <button
             v-for="project in projects"
             :key="project.id"
-            class="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1 text-left transition hover:bg-white/70"
+            class="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1 text-left transition hover:bg-muted/60"
             :class="
-              project.id === selectedProjectId ? 'font-semibold text-slate-900' : 'text-slate-700'
+              project.id === selectedProjectId ? 'font-semibold text-foreground' : 'text-muted-foreground'
             "
             @click="emit('select-project', project.id)"
           >
@@ -51,40 +51,40 @@ const emit = defineEmits<{
       </div>
 
       <div class="space-y-3">
-        <p class="text-xs tracking-[0.2em] text-slate-500 uppercase">Date Filters</p>
+        <p class="text-xs tracking-[0.2em] text-muted-foreground uppercase">Date Filters</p>
         <div class="grid grid-cols-2 gap-2">
           <Button
             variant="outline"
             size="sm"
-            :class="selectedDateRange === 'all' ? 'bg-white' : ''"
+            :class="selectedDateRange === 'all' ? 'bg-muted/50' : ''"
             @click="emit('select-date', 'all')"
             >All</Button
           >
           <Button
             variant="outline"
             size="sm"
-            :class="selectedDateRange === 'today' ? 'bg-white' : ''"
+            :class="selectedDateRange === 'today' ? 'bg-muted/50' : ''"
             @click="emit('select-date', 'today')"
             >Today</Button
           >
           <Button
             variant="outline"
             size="sm"
-            :class="selectedDateRange === 'tomorrow' ? 'bg-white' : ''"
+            :class="selectedDateRange === 'tomorrow' ? 'bg-muted/50' : ''"
             @click="emit('select-date', 'tomorrow')"
             >Tomorrow</Button
           >
           <Button
             variant="outline"
             size="sm"
-            :class="selectedDateRange === '7' ? 'bg-white' : ''"
+            :class="selectedDateRange === '7' ? 'bg-muted/50' : ''"
             @click="emit('select-date', '7')"
             >7 days</Button
           >
           <Button
             variant="outline"
             size="sm"
-            :class="selectedDateRange === '30' ? 'bg-white' : ''"
+            :class="selectedDateRange === '30' ? 'bg-muted/50' : ''"
             @click="emit('select-date', '30')"
             >30 days</Button
           >
@@ -92,18 +92,18 @@ const emit = defineEmits<{
       </div>
 
       <div class="space-y-3">
-        <p class="text-xs tracking-[0.2em] text-slate-500 uppercase">Reminders (3 days)</p>
-        <div class="space-y-2 text-sm text-slate-700">
-          <div v-if="!upcomingDeadlines.length" class="text-xs text-slate-400">
+        <p class="text-xs tracking-[0.2em] text-muted-foreground uppercase">Reminders (3 days)</p>
+        <div class="space-y-2 text-sm text-muted-foreground">
+          <div v-if="!upcomingDeadlines.length" class="text-xs text-muted-foreground/60">
             No deadlines in next 3 days
           </div>
           <div
             v-for="t in upcomingDeadlines"
             :key="t.id"
-            class="flex items-center justify-between gap-2 rounded-md bg-white/70 px-2 py-1"
+            class="flex items-center justify-between gap-2 rounded-md bg-muted/40 px-2 py-1"
           >
-            <span class="truncate">{{ t.title || "Task" }}</span>
-            <Badge variant="outline" class="border-slate-200 text-xs text-slate-500">
+            <span class="truncate text-foreground">{{ t.title || "Task" }}</span>
+            <Badge variant="outline" class="text-xs">
               {{ t.deadline ? format(new Date(t.deadline), "MMM dd") : "" }}
             </Badge>
           </div>

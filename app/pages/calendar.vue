@@ -146,7 +146,7 @@ useHead(() => ({ title: title.value }));
       <div class="flex items-center gap-3">
         <h1 class="text-2xl font-semibold tracking-tight">Calendar</h1>
         <Tabs v-if="isOwner" v-model="mode" class="w-auto">
-          <TabsList class="bg-slate-100/60">
+          <TabsList class="bg-muted/40">
             <TabsTrigger value="meetings">Meetings</TabsTrigger>
             <TabsTrigger value="tasks">Tasks</TabsTrigger>
           </TabsList>

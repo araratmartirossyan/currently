@@ -107,13 +107,13 @@ const hasAnyTasks = computed(() => taskStore.filteredTasks.length > 0);
           <div class="flex items-center gap-4">
             <h2 class="text-3xl font-semibold tracking-tight">Today Task</h2>
             <Tabs v-model="viewMode" class="w-auto">
-              <TabsList class="bg-slate-100/60">
+              <TabsList class="bg-muted/40">
                 <TabsTrigger value="list">List</TabsTrigger>
                 <TabsTrigger value="calendar">Calendar</TabsTrigger>
               </TabsList>
             </Tabs>
-            <div class="flex items-center gap-3 text-sm text-slate-500">
-              <span class="flex items-center gap-1 text-base font-semibold text-slate-700">{{
+            <div class="flex items-center gap-3 text-sm text-muted-foreground">
+              <span class="flex items-center gap-1 text-base font-semibold text-foreground">{{
                 filterCounts.all
               }}</span>
             </div>
@@ -122,16 +122,16 @@ const hasAnyTasks = computed(() => taskStore.filteredTasks.length > 0);
           <template v-if="viewMode === 'list'">
             <div
               v-if="!hasAnyTasks"
-              class="rounded-lg border border-dashed border-slate-200 bg-white/60 p-10 text-center"
+              class="rounded-lg border border-dashed p-10 text-center"
             >
-              <div class="text-lg font-semibold text-slate-900">No tasks yet</div>
-              <div class="mt-1 text-sm text-slate-500">
+              <div class="text-lg font-semibold">No tasks yet</div>
+              <div class="mt-1 text-sm text-muted-foreground">
                 Create your first task to see it here (and on the calendar).
               </div>
             </div>
 
             <Tabs v-else default-value="today" class="w-full">
-              <TabsList class="bg-slate-100/60">
+              <TabsList class="bg-muted/40">
                 <TabsTrigger value="today">Today</TabsTrigger>
                 <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
               </TabsList>
@@ -198,7 +198,7 @@ const hasAnyTasks = computed(() => taskStore.filteredTasks.length > 0);
       <ScrollArea class="h-full pr-1">
         <div
           v-if="!hasAnyTasks"
-          class="rounded-lg border border-dashed border-slate-200 bg-white/60 p-6 text-sm text-slate-500"
+          class="rounded-lg border border-dashed p-6 text-sm text-muted-foreground"
         >
           No upcoming events yet.
         </div>
