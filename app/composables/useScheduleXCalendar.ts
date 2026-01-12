@@ -265,5 +265,6 @@ export function useScheduleXCalendar(args: {
     calendarApp,
     timeZone,
     calendarControls: controls,
+    visibleRange,
   };
 }

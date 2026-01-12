@@ -2,8 +2,8 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { format } from "date-fns";
 import type { Project, Task } from "@/types";
+import { formatTaskLastDay } from "@/helpers/tasks/display";
 
 defineProps<{
   projects: Project[];
@@ -95,7 +95,7 @@ const emit = defineEmits<{
         <p class="text-xs tracking-[0.2em] text-muted-foreground uppercase">Reminders (3 days)</p>
         <div class="space-y-2 text-sm text-muted-foreground">
           <div v-if="!upcomingDeadlines.length" class="text-xs text-muted-foreground/60">
-            No deadlines in next 3 days
+            No reminders in next 3 days
           </div>
           <div
             v-for="t in upcomingDeadlines"
@@ -104,7 +104,7 @@ const emit = defineEmits<{
           >
             <span class="truncate text-foreground">{{ t.title || "Task" }}</span>
             <Badge variant="outline" class="text-xs">
-              {{ t.deadline ? format(new Date(t.deadline), "MMM dd") : "" }}
+              {{ formatTaskLastDay(t) }}
             </Badge>
           </div>
         </div>
