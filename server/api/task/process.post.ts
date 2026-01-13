@@ -36,6 +36,12 @@ export default defineEventHandler(async (event) => {
 
   const text = transcription.text;
 
+  // Get current date/time in user's timezone for relative date calculations
+  const now = new Date();
+  const currentDateTime = now.toISOString();
+  const currentDate = now.toISOString().split('T')[0]; // YYYY-MM-DD
+  const dayOfWeek = now.toLocaleDateString('en-US', { weekday: 'long' });
+
   // 2. Extract Info with project context
   const response = await openai.chat.completions.create({
     model: "gpt-4o",
@@ -43,11 +49,20 @@ export default defineEventHandler(async (event) => {
       {
         role: "system",
         content: `You are a task management assistant.
-User timezone: ${timezone}
+
+CURRENT DATE/TIME CONTEXT (IMPORTANT - Use this for all date calculations):
+- Current date/time: ${currentDateTime}
+- Today's date: ${currentDate}
+- Today is: ${dayOfWeek}
+- User timezone: ${timezone}
+
+AVAILABLE PROJECTS:
 Use this known project list: [${projectList.join(", ")}].
 - If the text mentions a project that matches (case-insensitive, partial is ok), return the exact name from the list.
 - If no match, set project to null.
-- Always return a non-empty title; if unclear, generate a concise 6-10 word summary.
+
+OUTPUT FORMAT:
+Always return a non-empty title; if unclear, generate a concise 6-10 word summary.
 Return JSON with:
   title (string)
   description (string, fuller text)
@@ -58,11 +73,16 @@ Return JSON with:
   start_at (ISO string or null)  // scheduled start time (task time block)
   end_at (ISO string or null)    // scheduled end time (task time block)
 
-Rules:
-- If the user specifies a time block (e.g. "tomorrow 3-5pm", "for 2 hours at 4pm"), set start_at/end_at.
-- If only start time is given, assume 1 hour duration for end_at.
-- If the user specifies a due date ("by Friday", "deadline Monday"), set deadline.
-- If both are mentioned, return both.
+DATE CALCULATION RULES:
+- ALWAYS calculate dates relative to the current date/time provided above
+- "tomorrow" means the day after ${currentDate}
+- "next week" means 7 days from ${currentDate}
+- "Friday" means the next Friday from ${currentDate}
+- If the user specifies a time block (e.g. "tomorrow 3-5pm", "for 2 hours at 4pm"), set start_at/end_at
+- If only start time is given, assume 1 hour duration for end_at
+- If the user specifies a due date ("by Friday", "deadline Monday"), set deadline
+- If both time block and deadline are mentioned, return both
+- All dates must be in ISO 8601 format with timezone (e.g., "${currentDateTime}")
 
 Text: "${text}"`,
       },

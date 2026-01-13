@@ -13,7 +13,7 @@ export default defineNuxtConfig({
       openaiApiKey: process.env.NUXT_PUBLIC_OPENAI_API_KEY,
     },
   },
-  modules: ["@nuxtjs/supabase", "@clerk/nuxt", "@vite-pwa/nuxt", "@pinia/nuxt", "@nuxt/eslint"],
+  modules: ["@nuxtjs/supabase", "@vite-pwa/nuxt", "@pinia/nuxt", "@nuxt/eslint"],
   pwa: {
     manifest: {
       name: "Currently",

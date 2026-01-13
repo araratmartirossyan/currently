@@ -25,6 +25,12 @@ export default defineEventHandler(async (event) => {
 
   const text = transcription.text;
 
+  // Get current date/time in user's timezone for relative date calculations
+  const now = new Date();
+  const currentDateTime = now.toISOString();
+  const currentDate = now.toISOString().split('T')[0]; // YYYY-MM-DD
+  const dayOfWeek = now.toLocaleDateString('en-US', { weekday: 'long' });
+
   // 2) Extract meeting/event fields
   const response = await openai.chat.completions.create({
     model: "gpt-4o",
@@ -33,8 +39,14 @@ export default defineEventHandler(async (event) => {
       {
         role: "system",
         content: `You are a calendar assistant.
-User timezone: ${timezone}
 
+CURRENT DATE/TIME CONTEXT (IMPORTANT - Use this for all date calculations):
+- Current date/time: ${currentDateTime}
+- Today's date: ${currentDate}
+- Today is: ${dayOfWeek}
+- User timezone: ${timezone}
+
+TASK:
 Extract ONE meeting/event from the text.
 Return JSON with:
   title (string)
@@ -45,10 +57,14 @@ Return JSON with:
   end_at (ISO string)
   rrule (string|null)  // optional RRULE, if user says recurring
 
-Rules:
-- If only a date is provided, set is_all_day=true and use midnight-to-midnight (end next day).
-- If only start time is provided, assume 1 hour duration for end_at.
-- Use the user's timezone for relative dates ("tomorrow", "next Monday") and ambiguous times.`,
+DATE CALCULATION RULES:
+- ALWAYS calculate dates relative to the current date/time provided above
+- "tomorrow" means the day after ${currentDate}
+- "next week" means 7 days from ${currentDate}
+- "Monday" means the next Monday from ${currentDate}
+- If only a date is provided, set is_all_day=true and use midnight-to-midnight (end next day)
+- If only start time is provided, assume 1 hour duration for end_at
+- All dates must be in ISO 8601 format with timezone (e.g., "${currentDateTime}")`,
       },
       { role: "user", content: text },
     ],
