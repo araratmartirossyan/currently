@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, watch, ref } from "vue";
+import { computed, onMounted, watch } from "vue";
 import { Mic, Square, Loader2, Save } from "lucide-vue-next";
 import { storeToRefs } from "pinia";
 import { toast } from "vue-sonner";
@@ -65,31 +65,26 @@ const {
   }).value,
 });
 
-// Date range picker
-const dateRange = ref<[Date | null, Date | null]>([null, null]);
-
-// Sync dateRange with form fields
-watch(dateRange, ([start, end]) => {
-  if (start) {
-    start_at.value = new Date(start).toISOString().slice(0, 16);
-  } else {
-    start_at.value = "";
+// Date range picker - initialize from form values
+const dateRange = computed({
+  get: () => {
+    const startDate = start_at.value ? new Date(start_at.value) : null;
+    const endDate = end_at.value ? new Date(end_at.value) : null;
+    return [startDate, endDate] as [Date | null, Date | null];
+  },
+  set: ([start, end]) => {
+    if (start) {
+      start_at.value = new Date(start).toISOString().slice(0, 16);
+    } else {
+      start_at.value = "";
+    }
+    if (end) {
+      end_at.value = new Date(end).toISOString().slice(0, 16);
+    } else {
+      end_at.value = "";
+    }
   }
-  if (end) {
-    end_at.value = new Date(end).toISOString().slice(0, 16);
-  } else {
-    end_at.value = "";
-  }
-}, { deep: true });
-
-// Initialize dateRange from form values
-watch([() => start_at.value, () => end_at.value], () => {
-  const startDate = start_at.value ? new Date(start_at.value) : null;
-  const endDate = end_at.value ? new Date(end_at.value) : null;
-  if (startDate || endDate) {
-    dateRange.value = [startDate, endDate];
-  }
-}, { immediate: true });
+});
 
 onMounted(async () => {
   try {
@@ -215,18 +210,20 @@ const onCancel = () => {
 
       <div class="grid gap-2">
         <label class="text-sm font-medium">Time Block (Start - End)</label>
-        <VueDatePicker
-          v-model="dateRange"
-          range
-          :enable-time-picker="true"
-          :teleport="false"
-          :auto-apply="true"
-          :text-input="true"
-          :is-24="true"
-          dark
-          class="cursor-pointer"
-          placeholder="Select start and end date/time"
-        />
+        <client-only>
+          <VueDatePicker
+            v-model="dateRange"
+            range
+            :enable-time-picker="true"
+            :auto-apply="false"
+            :text-input="true"
+            :is-24="true"
+            :action-row="{ showSelect: true, showCancel: true, showNow: false, showPreview: true }"
+            dark
+            class="cursor-pointer"
+            placeholder="Select start and end date/time"
+          />
+        </client-only>
       </div>
 
       <div class="grid grid-cols-2 gap-4">

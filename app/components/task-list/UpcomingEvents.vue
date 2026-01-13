@@ -65,7 +65,7 @@ const items = computed<UpcomingItem[]>(() => {
       id: meeting.id,
       title: meeting.title || "Untitled meeting",
       projectName: meeting.project_id ? props.projectNameById[meeting.project_id] : undefined,
-      date: d,
+      date: startDate, // Keep full datetime for meetings
       daysLeft,
       meeting,
     });
@@ -119,7 +119,11 @@ const items = computed<UpcomingItem[]>(() => {
               </div>
             </div>
             <div class="text-xs text-muted-foreground mt-1">
-              {{ format(item.date, "EEE, MMM dd") }}
+              {{
+                item.type === "meeting"
+                  ? format(item.date, "EEE, MMM dd · h:mm a")
+                  : format(item.date, "EEE, MMM dd")
+              }}
             </div>
           </div>
           <Badge variant="outline" class="shrink-0 text-muted-foreground">
