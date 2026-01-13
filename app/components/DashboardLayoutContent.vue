@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import AppSidebar from "@/components/AppSidebar.vue";
 import TaskCreateForm from "@/components/task-create/TaskCreateForm.vue";
 import {
   Breadcrumb,
@@ -10,24 +9,39 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Separator } from "@/components/ui/separator";
-import { SidebarInset, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
-import { Plus, ChevronDown, Check } from "lucide-vue-next";
+import {
+  Plus,
+  ChevronDown,
+  Check,
+  ListTodo,
+  CalendarDays,
+  FolderKanban,
+  Settings,
+  LogOut,
+  BadgeCheck,
+  GalleryVerticalEnd,
+} from "lucide-vue-next";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuGroup,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useTaskStore } from "@/stores/tasks";
 import { useProjectStore } from "@/stores/projects";
 import { storeToRefs } from "pinia";
 import { computed, ref } from "vue";
 import { useRoute } from "vue-router";
+import { toast } from "vue-sonner";
 
+const supabase = useSupabaseClient();
 const user = useSupabaseUser();
-const { isMobile, setOpen, open } = useSidebar();
 const route = useRoute();
 const taskStore = useTaskStore();
 const projectStore = useProjectStore();
@@ -38,8 +52,6 @@ const currentProjectName = computed(() => {
   if (!selectedProjectId.value) return "All Projects";
   return projects.value.find((p) => p.id === selectedProjectId.value)?.name || "Unknown Project";
 });
-
-const isSidebarOpen = computed(() => open.value);
 
 const isCreateTaskOpen = ref(false);
 
@@ -54,42 +66,105 @@ const breadcrumbs = computed(() => {
 
 const isTasksDashboardRoute = computed(() => route.path === "/");
 const isOwner = computed(() => Boolean(user.value));
+
+const navItems = computed(() => {
+  if (!user.value) {
+    return [
+      {
+        title: "Calendar",
+        url: "/calendar",
+        icon: CalendarDays,
+      },
+    ];
+  }
+  return [
+    {
+      title: "Tasks",
+      url: "/",
+      icon: ListTodo,
+    },
+    {
+      title: "Calendar",
+      url: "/calendar",
+      icon: CalendarDays,
+    },
+    {
+      title: "Projects",
+      url: "/projects",
+      icon: FolderKanban,
+    },
+    {
+      title: "Settings",
+      url: "/settings",
+      icon: Settings,
+    },
+  ];
+});
+
+const displayName = computed(() => user.value?.email?.split("@")[0] || "Guest");
+const displayEmail = computed(() => user.value?.email || "Read-only calendar");
+const avatarUrl = computed(() => {
+  const name = encodeURIComponent(displayName.value || "Guest");
+  return `https://ui-avatars.com/api/?name=${name}&background=0D8ABC&color=fff`;
+});
+
+const handleLogout = async () => {
+  try {
+    await supabase.auth.signOut();
+    toast.success("Logged out");
+    await navigateTo("/calendar");
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : "Failed to log out";
+    toast.error(message);
+  }
+};
 </script>
 
 <template>
-  <AppSidebar />
-  <SidebarInset>
-    <!-- Desktop Overlay Backdrop -->
-    <Transition
-      enter-active-class="transition-opacity duration-300 ease-linear"
-      enter-from-class="opacity-0"
-      enter-to-class="opacity-100"
-      leave-active-class="transition-opacity duration-300 ease-linear"
-      leave-from-class="opacity-100"
-      leave-to-class="opacity-0"
-    >
-      <div
-        v-if="isSidebarOpen && !isMobile"
-        class="fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px] transition-all"
-        @click="setOpen(false)"
-      ></div>
-    </Transition>
-
+  <div class="flex h-screen flex-col">
     <header
       class="bg-background/95 supports-backdrop-filter:bg-background/60 sticky top-0 z-30 flex h-16 shrink-0 items-center gap-2 border-b backdrop-blur transition-[width,height] ease-linear"
     >
-      <div class="flex w-full items-center gap-2 px-4">
-        <SidebarTrigger class="-ml-1" />
-        <Separator orientation="vertical" class="mr-2 h-4" />
-        <Breadcrumb>
+      <div class="flex w-full items-center gap-4 px-4">
+        <!-- Logo/Brand -->
+        <NuxtLink
+          to="/"
+          class="flex items-center gap-2 font-semibold hover:opacity-80 transition-opacity cursor-pointer"
+        >
+          <div
+            class="bg-primary text-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg"
+          >
+            <GalleryVerticalEnd class="size-4" />
+          </div>
+          <span class="hidden sm:inline">Currently</span>
+        </NuxtLink>
+
+        <Separator orientation="vertical" class="h-6" />
+
+        <!-- Navigation Links -->
+        <nav class="flex items-center gap-1">
+          <Button
+            v-for="item in navItems"
+            :key="item.title"
+            as-child
+            variant="ghost"
+            size="sm"
+            class="cursor-pointer"
+          >
+            <NuxtLink :to="item.url" class="flex items-center gap-2">
+              <component :is="item.icon" class="size-4" />
+              <span class="hidden md:inline">{{ item.title }}</span>
+            </NuxtLink>
+          </Button>
+        </nav>
+
+        <Separator orientation="vertical" class="h-6 hidden lg:block" />
+
+        <!-- Breadcrumbs (hidden on mobile) -->
+        <Breadcrumb class="hidden lg:block">
           <BreadcrumbList>
-            <BreadcrumbItem class="hidden md:block">
-              <BreadcrumbLink as-child>
-                <NuxtLink to="/">Currently</NuxtLink>
-              </BreadcrumbLink>
-            </BreadcrumbItem>
             <template v-for="(breadcrumb, index) in breadcrumbs" :key="breadcrumb.url">
-              <BreadcrumbSeparator class="hidden md:block" />
+              <BreadcrumbSeparator v-if="index > 0" />
               <BreadcrumbItem>
                 <BreadcrumbLink v-if="index < breadcrumbs.length - 1" as-child>
                   <NuxtLink :to="breadcrumb.url">{{ breadcrumb.title }}</NuxtLink>
@@ -103,16 +178,19 @@ const isOwner = computed(() => Boolean(user.value));
           </BreadcrumbList>
         </Breadcrumb>
 
+        <!-- Right side actions -->
         <div class="ml-auto flex items-center gap-2">
+          <!-- Project Filter -->
           <DropdownMenu v-if="isOwner">
             <DropdownMenuTrigger as-child>
-              <Button variant="outline" size="sm" class="h-8 gap-1 pr-2">
-                {{ currentProjectName }}
+              <Button variant="outline" size="sm" class="h-8 gap-1 pr-2 cursor-pointer">
+                <span class="hidden sm:inline">{{ currentProjectName }}</span>
+                <span class="sm:hidden">Project</span>
                 <ChevronDown class="size-3.5 opacity-50" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" class="w-48">
-              <DropdownMenuItem @click="taskStore.setSelectedProject(null)">
+              <DropdownMenuItem class="cursor-pointer" @click="taskStore.setSelectedProject(null)">
                 <div class="flex flex-1 items-center gap-2">
                   <span>All Projects</span>
                 </div>
@@ -121,6 +199,7 @@ const isOwner = computed(() => Boolean(user.value));
               <DropdownMenuItem
                 v-for="project in projects"
                 :key="project.id"
+                class="cursor-pointer"
                 @click="taskStore.setSelectedProject(project.id)"
               >
                 <div class="flex flex-1 items-center gap-2">
@@ -131,11 +210,12 @@ const isOwner = computed(() => Boolean(user.value));
             </DropdownMenuContent>
           </DropdownMenu>
 
+          <!-- Create Task Button -->
           <Sheet v-if="isOwner" v-model:open="isCreateTaskOpen">
             <Button
               size="sm"
               variant="outline"
-              class="hidden h-8 sm:flex"
+              class="hidden h-8 sm:flex cursor-pointer"
               @click="isCreateTaskOpen = true"
             >
               <Plus class="mr-2 size-4" />
@@ -144,7 +224,7 @@ const isOwner = computed(() => Boolean(user.value));
             <Button
               size="icon"
               variant="outline"
-              class="sm:hidden"
+              class="sm:hidden cursor-pointer"
               @click="isCreateTaskOpen = true"
             >
               <Plus class="size-4" />
@@ -160,6 +240,44 @@ const isOwner = computed(() => Boolean(user.value));
             </SheetContent>
           </Sheet>
 
+          <!-- User Menu -->
+          <DropdownMenu v-if="user">
+            <DropdownMenuTrigger as-child>
+              <Button variant="ghost" size="sm" class="h-8 w-8 rounded-full p-0 cursor-pointer">
+                <Avatar class="h-8 w-8">
+                  <AvatarImage :src="avatarUrl" :alt="displayName" />
+                  <AvatarFallback>{{ displayName.slice(0, 2).toUpperCase() }}</AvatarFallback>
+                </Avatar>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" class="w-56">
+              <DropdownMenuLabel class="font-normal">
+                <div class="flex flex-col space-y-1">
+                  <p class="text-sm font-medium leading-none">{{ displayName }}</p>
+                  <p class="text-xs leading-none text-muted-foreground">{{ displayEmail }}</p>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuGroup>
+                <DropdownMenuItem as-child class="cursor-pointer">
+                  <NuxtLink to="/settings" class="flex w-full items-center">
+                    <BadgeCheck class="mr-2 size-4" />
+                    Account
+                  </NuxtLink>
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                class="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive"
+                @click="handleLogout"
+              >
+                <LogOut class="mr-2 size-4" />
+                Log out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <!-- Sign In Button (for guests) -->
           <Button v-else as-child variant="outline" size="sm" class="h-8 cursor-pointer">
             <NuxtLink to="/login">Sign in</NuxtLink>
           </Button>
@@ -175,5 +293,5 @@ const isOwner = computed(() => Boolean(user.value));
     >
       <slot />
     </main>
-  </SidebarInset>
+  </div>
 </template>
