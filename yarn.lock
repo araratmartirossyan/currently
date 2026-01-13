@@ -2420,6 +2420,19 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@nuxtjs/color-mode@npm:^4.0.0":
+  version: 4.0.0
+  resolution: "@nuxtjs/color-mode@npm:4.0.0"
+  dependencies:
+    "@nuxt/kit": "npm:^4.2.1"
+    exsolve: "npm:^1.0.8"
+    pathe: "npm:^2.0.3"
+    pkg-types: "npm:^2.3.0"
+    semver: "npm:^7.7.3"
+  checksum: 10c0/50fb52aad8353bdfb2e8a26769390a2463b1869c167ccc2295b98b8f66e1a517cc239ec1145f952d8a6f0e900678f09c1c89ac881e06cb214571681aad8898bf
+  languageName: node
+  linkType: hard
+
 "@nuxtjs/supabase@npm:^2.0.3":
   version: 2.0.3
   resolution: "@nuxtjs/supabase@npm:2.0.3"
@@ -5865,6 +5878,7 @@ __metadata:
     "@nuxt/eslint": "npm:^1.12.1"
     "@nuxt/eslint-config": "npm:^1.12.1"
     "@nuxt/kit": "npm:^4.2.2"
+    "@nuxtjs/color-mode": "npm:^4.0.0"
     "@nuxtjs/supabase": "npm:^2.0.3"
     "@pinia/nuxt": "npm:^0.11.3"
     "@preact/signals": "npm:^2.5.1"

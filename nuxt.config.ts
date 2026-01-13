@@ -13,7 +13,18 @@ export default defineNuxtConfig({
       openaiApiKey: process.env.NUXT_PUBLIC_OPENAI_API_KEY,
     },
   },
-  modules: ["@nuxtjs/supabase", "@vite-pwa/nuxt", "@pinia/nuxt", "@nuxt/eslint"],
+  modules: [
+    "@nuxtjs/supabase",
+    "@vite-pwa/nuxt",
+    "@pinia/nuxt",
+    "@nuxt/eslint",
+    "@nuxtjs/color-mode",
+  ],
+  colorMode: {
+    classSuffix: "",
+    preference: "system", // default value of $colorMode.preference
+    fallback: "light", // fallback value if not system preference found
+  },
   pwa: {
     manifest: {
       name: "Currently",

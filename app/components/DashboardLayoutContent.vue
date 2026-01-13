@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import TaskCreateForm from "@/components/task-create/TaskCreateForm.vue";
+import ThemeToggle from "@/components/ThemeToggle.vue";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -209,6 +210,9 @@ const handleLogout = async () => {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+
+          <!-- Theme Toggle -->
+          <ThemeToggle />
 
           <!-- Create Task Button -->
           <Sheet v-if="isOwner" v-model:open="isCreateTaskOpen">
