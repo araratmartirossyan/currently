@@ -1,16 +1,21 @@
 import { computed, type Ref } from "vue";
 import { differenceInCalendarDays, isValid, startOfDay } from "date-fns";
 import type { Task } from "@/types";
+import { compareTasksByStatus } from "@/helpers/tasks/sorting";
+import type { TaskStatusFilter } from "@/constants/tasks";
 
 export type DateRangeFilter = "all" | "today" | "tomorrow" | "7" | "30";
+export type SortOption = "date" | "status" | "created";
 
 interface Options {
   tasks: Ref<Task[]>;
   selectedProjectId: Ref<string | null>;
   selectedDateRange: Ref<DateRangeFilter>;
+  selectedStatus?: Ref<TaskStatusFilter>;
+  sortBy?: Ref<SortOption>;
 }
 
-export function useTaskFilters({ tasks, selectedProjectId, selectedDateRange }: Options) {
+export function useTaskFilters({ tasks, selectedProjectId, selectedDateRange, selectedStatus, sortBy }: Options) {
   const todayStart = computed(() => startOfDay(new Date()));
 
   function taskLastDate(task: Task): Date | null {
@@ -22,11 +27,23 @@ export function useTaskFilters({ tasks, selectedProjectId, selectedDateRange }: 
 
   const filteredTasks = computed(() => {
     return tasks.value.filter((t) => {
-      if (t.status === "completed") return false;
+      // Filter by status
+      const statusFilter = selectedStatus?.value ?? "all";
+      if (statusFilter !== "all" && t.status !== statusFilter) {
+        return false;
+      }
+
+      // Always exclude completed tasks unless explicitly filtering for them
+      if (statusFilter !== "completed" && t.status === "completed") {
+        return false;
+      }
+
+      // Filter by project
       if (selectedProjectId.value) {
         if (t.project_id !== selectedProjectId.value) return false;
       }
 
+      // Filter by date range
       if (selectedDateRange.value) {
         if (selectedDateRange.value === "all") return true;
         const last = taskLastDate(t);
@@ -42,17 +59,26 @@ export function useTaskFilters({ tasks, selectedProjectId, selectedDateRange }: 
     });
   });
 
-  const todayList = computed(() =>
-    filteredTasks.value
-      .slice()
-      .sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""))
-  );
+  function sortTasks(taskList: Task[]): Task[] {
+    const sorted = taskList.slice();
+    const currentSortBy = sortBy?.value ?? "created";
+
+    if (currentSortBy === "status") {
+      return sorted.sort((a, b) => compareTasksByStatus(a.status, b.status));
+    } else if (currentSortBy === "date") {
+      return sorted.sort((a, b) => 
+        (taskLastDate(a)?.toISOString() || "").localeCompare(taskLastDate(b)?.toISOString() || "")
+      );
+    } else {
+      // Default: sort by created date (newest first)
+      return sorted.sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""));
+    }
+  }
+
+  const todayList = computed(() => sortTasks(filteredTasks.value));
 
   const upcomingList = computed(() =>
-    filteredTasks.value
-      .filter((t) => t.status !== "completed")
-      .slice()
-      .sort((a, b) => (taskLastDate(a)?.toISOString() || "").localeCompare(taskLastDate(b)?.toISOString() || ""))
+    sortTasks(filteredTasks.value.filter((t) => t.status !== "completed"))
   );
 
   const upcomingDeadlines = computed(() =>

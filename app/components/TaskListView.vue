@@ -1,23 +1,36 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, onMounted } from "vue";
 import { useTaskStore } from "@/stores/tasks";
 import { useProjectStore } from "@/stores/projects";
+import { useCalendarEventsStore } from "@/stores/calendarEvents";
 import { storeToRefs } from "pinia";
-import { useTaskFilters, type DateRangeFilter } from "@/composables/useTaskFilters";
+import { useTaskFilters, type DateRangeFilter, type SortOption } from "@/composables/useTaskFilters";
+import { getUpcomingMeetings } from "@/helpers/calendar/display";
+import { TASK_STATUSES, type TaskStatusFilter } from "@/constants/tasks";
 import ProjectsSidebar from "@/components/task-list/ProjectsSidebar.vue";
 import TaskListBlock from "@/components/task-list/TaskListBlock.vue";
 import UpcomingEvents from "@/components/task-list/UpcomingEvents.vue";
 import UpcomingSection from "@/components/task-list/UpcomingSection.vue";
 import EditTaskDialog from "@/components/task-list/EditTaskDialog.vue";
+import EditMeetingDialog from "@/components/calendar/EditMeetingDialog.vue";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { Task } from "@/types";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import type { Task, CalendarEvent } from "@/types";
 import ScheduleXCalendarView from "@/components/calendar/ScheduleXCalendarView.client.vue";
 
 const taskStore = useTaskStore();
 const projectStore = useProjectStore();
+const calendarEventsStore = useCalendarEventsStore();
 const { filteredTasks } = storeToRefs(taskStore);
 const { projects } = storeToRefs(projectStore);
+const { events: calendarEvents } = storeToRefs(calendarEventsStore);
 
 const projectColorById = computed<Record<string, string | null>>(() => {
   return Object.fromEntries(projects.value.map((p) => [p.id, p.color || null]));
@@ -30,11 +43,15 @@ const projectNameById = computed<Record<string, string>>(() => {
 const viewMode = ref<"list" | "calendar">("list");
 
 const selectedDateRange = ref<DateRangeFilter>("all");
+const selectedStatus = ref<TaskStatusFilter>("all");
+const sortBy = ref<SortOption>("created");
 
 const { todayList, upcomingList, upcomingDeadlines, filterCounts } = useTaskFilters({
   tasks: filteredTasks,
   selectedProjectId: computed(() => taskStore.selectedProjectId),
   selectedDateRange,
+  selectedStatus,
+  sortBy,
 });
 
 const statusColors: Record<string, string> = {
@@ -84,6 +101,30 @@ const toggleComplete = async (task: Task) => {
 };
 
 const hasAnyTasks = computed(() => taskStore.filteredTasks.length > 0);
+
+const upcomingMeetings = computed(() => getUpcomingMeetings(calendarEvents.value, 3));
+
+const editingMeeting = ref<CalendarEvent | null>(null);
+
+const openEditMeeting = (meeting: CalendarEvent) => {
+  editingMeeting.value = meeting;
+};
+
+const closeEditMeeting = () => {
+  editingMeeting.value = null;
+};
+
+// Fetch calendar events on mount for the next 30 days
+onMounted(async () => {
+  try {
+    const today = new Date();
+    const futureDate = new Date();
+    futureDate.setDate(today.getDate() + 30);
+    await calendarEventsStore.fetchRange(today.toISOString(), futureDate.toISOString());
+  } catch (e) {
+    console.error("Failed to load calendar events", e);
+  }
+});
 </script>
 
 <template>
@@ -116,6 +157,39 @@ const hasAnyTasks = computed(() => taskStore.filteredTasks.length > 0);
               <span class="flex items-center gap-1 text-base font-semibold text-foreground">{{
                 filterCounts.all
               }}</span>
+            </div>
+            <div v-if="viewMode === 'list'" class="ml-auto flex items-center gap-4">
+              <div class="flex items-center gap-2">
+                <span class="text-sm text-muted-foreground">Status:</span>
+                <Select v-model="selectedStatus">
+                  <SelectTrigger class="w-[140px] cursor-pointer">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem
+                      v-for="status in TASK_STATUSES"
+                      :key="status.value"
+                      :value="status.value"
+                      class="cursor-pointer"
+                    >
+                      {{ status.label }}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-sm text-muted-foreground">Sort by:</span>
+                <Select v-model="sortBy">
+                  <SelectTrigger class="w-[140px] cursor-pointer">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="created" class="cursor-pointer">Created Date</SelectItem>
+                    <SelectItem value="date" class="cursor-pointer">Due Date</SelectItem>
+                    <SelectItem value="status" class="cursor-pointer">Status</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 
@@ -205,8 +279,10 @@ const hasAnyTasks = computed(() => taskStore.filteredTasks.length > 0);
         <UpcomingEvents
           v-else
           :tasks="upcomingDeadlines"
+          :meetings="upcomingMeetings"
           :project-name-by-id="projectNameById"
-          @edit="openEdit"
+          @edit-task="openEdit"
+          @edit-meeting="openEditMeeting"
         />
       </ScrollArea>
     </div>
@@ -224,5 +300,12 @@ const hasAnyTasks = computed(() => taskStore.filteredTasks.length > 0);
         closeEdit();
       }
     "
+  />
+
+  <EditMeetingDialog
+    :open="!!editingMeeting"
+    :meeting="editingMeeting"
+    :projects="projects"
+    @close="closeEditMeeting"
   />
 </template>
