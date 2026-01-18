@@ -13,12 +13,13 @@ import {
   buildScheduleXEvents,
   getUserTimeZone,
   rangePartToIso,
+  type ScheduleXMode,
   type ScheduleXEvent,
   type ScheduleXRange,
 } from "@/helpers/calendar/schedulex";
 
 export function useScheduleXCalendar(args: {
-  mode: () => "meetings" | "tasks";
+  mode: () => ScheduleXMode;
   meetings: () => CalendarEvent[];
   tasks: () => Task[];
   projectColorById?: () => Record<string, string | null | undefined>;

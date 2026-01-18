@@ -18,7 +18,7 @@ const ScheduleXCalendar = (ScheduleXVue as unknown as { ScheduleXCalendar?: unkn
   .ScheduleXCalendar;
 
 const props = defineProps<{
-  mode: "meetings" | "tasks";
+  mode: "meetings" | "tasks" | "all";
   meetings: CalendarEvent[];
   tasks: Task[];
   projectColorById?: Record<string, string | null | undefined>;

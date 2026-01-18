@@ -34,10 +34,11 @@ const projectNameById = computed<Record<string, string | null>>(() => {
   return Object.fromEntries(projects.value.map((p) => [p.id, p.name]));
 });
 
-const mode = ref<"meetings" | "tasks">("meetings");
+const mode = ref<"all" | "meetings" | "tasks">("all");
 const isImportOpen = ref(false);
 const isCreateMeetingOpen = ref(false);
 const isCreateTaskOpen = ref(false);
+const isCreateChooserOpen = ref(false);
 const isCalendarReady = ref(false);
 const meetingSeed = ref(0);
 const taskSeed = ref(0);
@@ -72,6 +73,8 @@ const onCalendarSlotClick = (payload: { date: Date; isAllDay: boolean }) => {
     });
     return;
   }
+
+  // For all-day events, set a default time of 9am
   const start = payload.isAllDay
     ? new Date(
         payload.date.getFullYear(),
@@ -83,18 +86,49 @@ const onCalendarSlotClick = (payload: { date: Date; isAllDay: boolean }) => {
         0
       )
     : payload.date;
-  const end = new Date(start.getTime() + 60 * 60 * 1000);
+    
+  // For time-based events, ensure we preserve the exact clicked time
+  const end = new Date(start.getTime() + 60 * 60 * 1000); // 1 hour later
   slotStart.value = start;
   slotEnd.value = end;
 
   if (mode.value === "meetings") {
     meetingSeed.value += 1;
     isCreateMeetingOpen.value = true;
-  } else {
+    return;
+  }
+
+  if (mode.value === "tasks") {
     taskSeed.value += 1;
     isCreateTaskOpen.value = true;
+    return;
   }
+
+  // In "All" mode, ask which type to create (meeting vs task).
+  isCreateChooserOpen.value = true;
 };
+
+function openCreateMeetingFromChooser() {
+  isCreateChooserOpen.value = false;
+  meetingSeed.value += 1;
+  isCreateMeetingOpen.value = true;
+}
+
+function openCreateTaskFromChooser() {
+  isCreateChooserOpen.value = false;
+  taskSeed.value += 1;
+  isCreateTaskOpen.value = true;
+}
+
+function openCreateMeetingNow() {
+  meetingSeed.value += 1;
+  isCreateMeetingOpen.value = true;
+}
+
+function openCreateTaskNow() {
+  taskSeed.value += 1;
+  isCreateTaskOpen.value = true;
+}
 
 const onTaskSave = async (
   payload: Pick<Task, "title" | "description" | "status" | "project_id" | "start_at" | "end_at">
@@ -110,6 +144,10 @@ const onTaskSave = async (
 const onTaskDelete = async (id: string) => {
   await taskStore.deleteTaskRemote(id);
   editingTask.value = null;
+};
+
+const onCalendarRangeChange = (payload: { startIso: string; endIso: string }) => {
+  calendarStore.fetchRange(payload.startIso, payload.endIso);
 };
 
 onMounted(async () => {
@@ -133,7 +171,9 @@ const title = computed(() =>
   isOwner.value
     ? mode.value === "meetings"
       ? "Calendar · Meetings"
-      : "Calendar · Tasks"
+      : mode.value === "tasks"
+        ? "Calendar · Tasks"
+        : "Calendar · All"
     : "Calendar · Public"
 );
 
@@ -147,18 +187,37 @@ useHead(() => ({ title: title.value }));
         <h1 class="text-2xl font-semibold tracking-tight">Calendar</h1>
         <Tabs v-if="isOwner" v-model="mode" class="w-auto">
           <TabsList class="bg-muted/40">
-            <TabsTrigger value="meetings">Meetings</TabsTrigger>
-            <TabsTrigger value="tasks">Tasks</TabsTrigger>
+            <TabsTrigger value="all" class="cursor-pointer">All</TabsTrigger>
+            <TabsTrigger value="meetings" class="cursor-pointer">Meetings</TabsTrigger>
+            <TabsTrigger value="tasks" class="cursor-pointer">Tasks</TabsTrigger>
           </TabsList>
         </Tabs>
         <p v-else class="text-sm text-slate-500">Read-only agenda</p>
       </div>
 
       <div class="flex items-center gap-2">
-        <Button v-if="isOwner" variant="outline" @click="isImportOpen = true">Import</Button>
-        <Button v-if="isOwner && mode === 'meetings'" @click="isCreateMeetingOpen = true"
-          >New meeting</Button
+        <Button
+          v-if="isOwner"
+          variant="outline"
+          class="cursor-pointer"
+          @click="isImportOpen = true"
         >
+          Import
+        </Button>
+        <Button
+          v-if="isOwner && (mode === 'meetings' || mode === 'all')"
+          class="cursor-pointer"
+          @click="openCreateMeetingNow"
+        >
+          New meeting
+        </Button>
+        <Button
+          v-if="isOwner && (mode === 'tasks' || mode === 'all')"
+          class="cursor-pointer"
+          @click="openCreateTaskNow"
+        >
+          New task
+        </Button>
         <Button v-if="!isOwner" as-child variant="outline" class="cursor-pointer">
           <NuxtLink to="/login">Sign in</NuxtLink>
         </Button>
@@ -179,13 +238,32 @@ useHead(() => ({ title: title.value }));
         :tasks="isOwner ? filteredTasks : []"
         :project-color-by-id="isOwner ? projectColorById : {}"
         :project-name-by-id="isOwner ? projectNameById : {}"
-        @range-change="({ startIso, endIso }) => calendarStore.fetchRange(startIso, endIso)"
+        @range-change="onCalendarRangeChange"
         @event-click="onCalendarEventClick"
         @slot-click="onCalendarSlotClick"
       />
     </client-only>
 
     <ImportMeetingsDialog v-if="isOwner" :open="isImportOpen" @close="isImportOpen = false" />
+
+    <Sheet v-if="isOwner" v-model:open="isCreateChooserOpen">
+      <SheetContent side="right" class="w-full overflow-y-auto sm:max-w-[420px]">
+        <SheetHeader class="mb-4">
+          <SheetTitle>Create</SheetTitle>
+        </SheetHeader>
+        <div class="space-y-3">
+          <p class="text-sm text-muted-foreground">
+            You’re viewing <strong>All</strong>. What would you like to create at this time?
+          </p>
+          <div class="flex flex-col gap-2">
+            <Button class="cursor-pointer" @click="openCreateMeetingFromChooser">Meeting</Button>
+            <Button class="cursor-pointer" variant="outline" @click="openCreateTaskFromChooser">
+              Task
+            </Button>
+          </div>
+        </div>
+      </SheetContent>
+    </Sheet>
 
     <Sheet v-if="isOwner" v-model:open="isCreateMeetingOpen">
       <SheetContent side="right" class="w-full overflow-y-auto sm:max-w-[560px]">
