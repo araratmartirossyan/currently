@@ -3,7 +3,6 @@ import { computed, onMounted, ref, watch } from "vue";
 import { Maximize2, Minimize2 } from "lucide-vue-next";
 import type { CalendarEvent, Task } from "@/types";
 import { useScheduleXCalendar } from "@/composables/useScheduleXCalendar";
-import { useTheme } from "@/composables/useTheme";
 import { Button } from "@/components/ui/button";
 import { buildScheduleXEvents } from "@/helpers/calendar/schedulex";
 
@@ -34,8 +33,8 @@ const emit = defineEmits<{
   (e: "slotClick", payload: { date: Date; isAllDay: boolean }): void;
 }>();
 
-const { theme } = useTheme();
-const scheduleXThemeClass = computed(() => (theme.value === "dark" ? "is-dark" : ""));
+const colorMode = useColorMode();
+const scheduleXThemeClass = computed(() => (colorMode.value === "dark" ? "is-dark" : ""));
 
 const isFullscreen = ref(false);
 const rootEl = ref<HTMLElement | null>(null);
