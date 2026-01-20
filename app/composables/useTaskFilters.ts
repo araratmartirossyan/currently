@@ -66,7 +66,7 @@ export function useTaskFilters({ tasks, selectedProjectId, selectedDateRange, se
     if (currentSortBy === "status") {
       return sorted.sort((a, b) => compareTasksByStatus(a.status, b.status));
     } else if (currentSortBy === "date") {
-      return sorted.sort((a, b) => 
+      return sorted.sort((a, b) =>
         (taskLastDate(a)?.toISOString() || "").localeCompare(taskLastDate(b)?.toISOString() || "")
       );
     } else {
@@ -75,14 +75,29 @@ export function useTaskFilters({ tasks, selectedProjectId, selectedDateRange, se
     }
   }
 
-  const todayList = computed(() => sortTasks(filteredTasks.value));
+  const todayList = computed(() => {
+    const todayTasks = filteredTasks.value.filter((t) => {
+      const last = taskLastDate(t);
+      if (!last) return true; // Include tasks without dates in "Today"
+      const diffDays = differenceInCalendarDays(startOfDay(last), todayStart.value);
+      return diffDays === 0; // Only tasks due today
+    });
+    return sortTasks(todayTasks);
+  });
 
-  const upcomingList = computed(() =>
-    sortTasks(filteredTasks.value.filter((t) => t.status !== "completed"))
-  );
+  const upcomingList = computed(() => {
+    const upcomingTasks = filteredTasks.value.filter((t) => {
+      if (t.status === "completed") return false;
+      const last = taskLastDate(t);
+      if (!last) return false; // Exclude tasks without dates from "Upcoming"
+      const diffDays = differenceInCalendarDays(startOfDay(last), todayStart.value);
+      return diffDays > 0; // Only future tasks
+    });
+    return sortTasks(upcomingTasks);
+  });
 
   const upcomingDeadlines = computed(() =>
-    tasks.value
+    filteredTasks.value
       .filter((t) => t.status !== "completed")
       .filter((t) => Boolean(taskLastDate(t)))
       .filter((t) => {

@@ -92,7 +92,7 @@ const items = computed<UpcomingItem[]>(() => {
         <button
           v-for="item in items"
           :key="`${item.type}-${item.id}`"
-          class="flex w-full cursor-pointer items-center justify-between gap-3 rounded-md border bg-muted/30 px-3 py-2 text-left hover:bg-muted/50"
+          class="flex w-full cursor-pointer items-center justify-between gap-2 rounded-md border bg-muted/30 px-2 py-2 text-left hover:bg-muted/50 sm:gap-3 sm:px-3"
           @click="
             item.type === 'task' && item.task
               ? emit('editTask', item.task)
@@ -102,7 +102,7 @@ const items = computed<UpcomingItem[]>(() => {
           "
         >
           <div class="min-w-0 flex-1">
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-1.5 sm:gap-2">
               <Badge
                 variant="secondary"
                 :class="
@@ -110,15 +110,15 @@ const items = computed<UpcomingItem[]>(() => {
                     ? 'bg-blue-100 text-blue-700 border-blue-200'
                     : 'bg-slate-100 text-slate-600 border-slate-200'
                 "
-                class="shrink-0 text-xs"
+                class="shrink-0 text-[10px] sm:text-xs"
               >
                 {{ item.type === "meeting" ? "Meeting" : "Task" }}
               </Badge>
-              <div class="truncate font-medium text-foreground">
+              <div class="truncate text-sm font-medium text-foreground sm:text-base">
                 {{ item.projectName ? `${item.projectName} · ` : "" }}{{ item.title }}
               </div>
             </div>
-            <div class="text-xs text-muted-foreground mt-1">
+            <div class="mt-1 text-[10px] text-muted-foreground sm:text-xs">
               {{
                 item.type === "meeting"
                   ? format(item.date, "EEE, MMM dd · h:mm a")
@@ -126,7 +126,10 @@ const items = computed<UpcomingItem[]>(() => {
               }}
             </div>
           </div>
-          <Badge variant="outline" class="shrink-0 text-muted-foreground">
+          <Badge
+            variant="outline"
+            class="shrink-0 text-[10px] text-muted-foreground sm:text-xs"
+          >
             D-{{ item.daysLeft }}
           </Badge>
         </button>

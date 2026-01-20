@@ -124,42 +124,42 @@ const handleLogout = async () => {
 <template>
   <div class="flex h-screen flex-col">
     <header
-      class="bg-background/95 supports-backdrop-filter:bg-background/60 sticky top-0 z-30 flex h-16 shrink-0 items-center gap-2 border-b backdrop-blur transition-[width,height] ease-linear"
+      class="bg-background/95 supports-backdrop-filter:bg-background/60 sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b backdrop-blur transition-[width,height] ease-linear sm:h-16"
     >
-      <div class="flex w-full items-center gap-4 px-4">
+      <div class="flex w-full items-center gap-2 px-3 sm:gap-4 sm:px-4">
         <!-- Logo/Brand -->
         <NuxtLink
           to="/"
-          class="flex items-center gap-2 font-semibold hover:opacity-80 transition-opacity cursor-pointer"
+          class="flex shrink-0 items-center gap-2 font-semibold hover:opacity-80 transition-opacity cursor-pointer"
         >
           <div
-            class="bg-primary text-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg"
+            class="bg-primary text-primary-foreground flex aspect-square size-7 items-center justify-center rounded-lg sm:size-8"
           >
-            <GalleryVerticalEnd class="size-4" />
+            <GalleryVerticalEnd class="size-3.5 sm:size-4" />
           </div>
-          <span class="hidden sm:inline">Currently</span>
+          <span class="hidden text-sm sm:inline sm:text-base">Currently</span>
         </NuxtLink>
 
-        <Separator orientation="vertical" class="h-6" />
+        <Separator orientation="vertical" class="h-5 sm:h-6" />
 
         <!-- Navigation Links -->
-        <nav class="flex items-center gap-1">
+        <nav class="flex items-center gap-0.5 sm:gap-1">
           <Button
             v-for="item in navItems"
             :key="item.title"
             as-child
             variant="ghost"
             size="sm"
-            class="cursor-pointer"
+            class="cursor-pointer h-8 px-2 sm:h-9 sm:px-3"
           >
-            <NuxtLink :to="item.url" class="flex items-center gap-2">
-              <component :is="item.icon" class="size-4" />
-              <span class="hidden md:inline">{{ item.title }}</span>
+            <NuxtLink :to="item.url" class="flex items-center gap-1.5 sm:gap-2">
+              <component :is="item.icon" class="size-3.5 sm:size-4" />
+              <span class="hidden text-xs md:inline md:text-sm">{{ item.title }}</span>
             </NuxtLink>
           </Button>
         </nav>
 
-        <Separator orientation="vertical" class="h-6 hidden lg:block" />
+        <Separator orientation="vertical" class="h-5 hidden sm:h-6 lg:block" />
 
         <!-- Breadcrumbs (hidden on mobile) -->
         <Breadcrumb class="hidden lg:block">
@@ -180,13 +180,16 @@ const handleLogout = async () => {
         </Breadcrumb>
 
         <!-- Right side actions -->
-        <div class="ml-auto flex items-center gap-2">
-          <!-- Project Filter -->
+        <div class="ml-auto flex items-center gap-1.5 sm:gap-2">
+          <!-- Project Filter (Hidden on mobile - using carousel instead) -->
           <DropdownMenu v-if="isOwner">
             <DropdownMenuTrigger as-child>
-              <Button variant="outline" size="sm" class="h-8 gap-1 pr-2 cursor-pointer">
-                <span class="hidden sm:inline">{{ currentProjectName }}</span>
-                <span class="sm:hidden">Project</span>
+              <Button
+                variant="outline"
+                size="sm"
+                class="hidden h-8 gap-1 pr-2 cursor-pointer lg:flex"
+              >
+                <span>{{ currentProjectName }}</span>
                 <ChevronDown class="size-3.5 opacity-50" />
               </Button>
             </DropdownMenuTrigger>
@@ -219,7 +222,7 @@ const handleLogout = async () => {
             <Button
               size="sm"
               variant="outline"
-              class="hidden h-8 sm:flex cursor-pointer"
+              class="hidden h-8 cursor-pointer sm:flex"
               @click="isCreateTaskOpen = true"
             >
               <Plus class="mr-2 size-4" />
@@ -228,7 +231,7 @@ const handleLogout = async () => {
             <Button
               size="icon"
               variant="outline"
-              class="sm:hidden cursor-pointer"
+              class="h-8 w-8 cursor-pointer sm:hidden"
               @click="isCreateTaskOpen = true"
             >
               <Plus class="size-4" />
@@ -247,8 +250,12 @@ const handleLogout = async () => {
           <!-- User Menu -->
           <DropdownMenu v-if="user">
             <DropdownMenuTrigger as-child>
-              <Button variant="ghost" size="sm" class="h-8 w-8 rounded-full p-0 cursor-pointer">
-                <Avatar class="h-8 w-8">
+              <Button
+                variant="ghost"
+                size="sm"
+                class="h-8 w-8 rounded-full p-0 cursor-pointer sm:h-9 sm:w-9"
+              >
+                <Avatar class="h-7 w-7 sm:h-8 sm:w-8">
                   <AvatarImage :src="avatarUrl" :alt="displayName" />
                   <AvatarFallback>{{ displayName.slice(0, 2).toUpperCase() }}</AvatarFallback>
                 </Avatar>
