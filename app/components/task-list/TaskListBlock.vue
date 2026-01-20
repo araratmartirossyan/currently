@@ -32,31 +32,66 @@ const emit = defineEmits<{
             :checked="task.status === 'completed'"
             @update:checked.stop="() => emit('toggle', task)"
           />
-          <div class="flex-1 space-y-0.5 sm:space-y-1">
-            <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
-              <p class="text-foreground text-sm font-medium leading-tight sm:text-base">
+          
+          <!-- Mobile Layout -->
+          <div class="flex-1 space-y-0.5 sm:hidden">
+            <p class="text-foreground text-sm font-medium leading-tight">
+              {{ task.title || "Untitled task" }}
+            </p>
+            <p class="line-clamp-2 text-xs text-slate-500">
+              {{ task.description || "No description provided." }}
+            </p>
+            <p v-if="formatTaskLastDay(task)" class="text-[10px] text-slate-400">
+              Last day: {{ formatTaskLastDay(task) }}
+            </p>
+            <div class="flex flex-wrap items-center gap-1.5 pt-1">
+              <Badge
+                v-if="task.project_id"
+                variant="outline"
+                class="border-slate-200 text-slate-500 shrink-0 text-[10px]"
+              >
+                {{ props.projectNameById[task.project_id] || "Project" }}
+              </Badge>
+              <Badge
+                variant="outline"
+                :class="[
+                  statusColors[task.status] || 'border-slate-200 bg-slate-100 text-slate-600',
+                  'shrink-0 text-[10px]',
+                ]"
+              >
+                {{ task.status?.replace("_", " ") || "pending" }}
+              </Badge>
+            </div>
+          </div>
+
+          <!-- Desktop Layout -->
+          <div class="hidden flex-1 space-y-1 sm:block">
+            <div class="flex flex-wrap items-center gap-2">
+              <p class="text-foreground font-medium leading-tight">
                 {{ task.title || "Untitled task" }}
               </p>
               <Badge
                 v-if="task.project_id"
                 variant="outline"
-                class="border-slate-200 text-slate-500 shrink-0 text-[10px] sm:text-xs"
+                class="border-slate-200 text-slate-500 shrink-0 text-xs"
               >
                 {{ props.projectNameById[task.project_id] || "Project" }}
               </Badge>
             </div>
-            <p class="line-clamp-2 text-xs text-slate-500 sm:text-sm">
+            <p class="line-clamp-2 text-sm text-slate-500">
               {{ task.description || "No description provided." }}
             </p>
-            <p v-if="formatTaskLastDay(task)" class="text-[10px] text-slate-400 sm:text-xs">
+            <p v-if="formatTaskLastDay(task)" class="text-xs text-slate-400">
               Last day: {{ formatTaskLastDay(task) }}
             </p>
           </div>
+
+          <!-- Desktop Status Badge -->
           <Badge
             variant="outline"
             :class="[
               statusColors[task.status] || 'border-slate-200 bg-slate-100 text-slate-600',
-              'shrink-0 text-[10px] sm:text-xs self-start mt-0.5 sm:mt-0',
+              'hidden shrink-0 text-xs self-start mt-0 sm:block',
             ]"
           >
             {{ task.status?.replace("_", " ") || "pending" }}

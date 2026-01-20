@@ -31,11 +31,41 @@ const emit = defineEmits<{
             :checked="task.status === 'completed'"
             @update:checked.stop="() => emit('toggle', task)"
           />
-          <div class="flex-1">
-            <p class="text-sm font-medium leading-tight text-foreground sm:text-base">
+          
+          <!-- Mobile Layout -->
+          <div class="flex-1 sm:hidden">
+            <p class="text-sm font-medium leading-tight text-foreground">
               {{ task.title || "Untitled task" }}
             </p>
-            <div class="text-xs text-muted-foreground sm:text-sm">
+            <div class="text-xs text-muted-foreground">
+              <span v-if="formatTaskLastDay(task)">Last day {{ formatTaskLastDay(task) }}</span>
+            </div>
+            <div class="flex flex-wrap items-center gap-1.5 pt-1">
+              <Badge
+                v-if="task.project_id"
+                variant="outline"
+                class="border-slate-200 text-slate-500 shrink-0 text-[10px]"
+              >
+                {{ props.projectNameById[task.project_id] || "Project" }}
+              </Badge>
+              <Badge
+                variant="outline"
+                :class="[
+                  statusColors[task.status] || 'bg-muted text-muted-foreground',
+                  'shrink-0 text-[10px]',
+                ]"
+              >
+                {{ task.status?.replace("_", " ") || "pending" }}
+              </Badge>
+            </div>
+          </div>
+
+          <!-- Desktop Layout -->
+          <div class="hidden flex-1 sm:block">
+            <p class="font-medium leading-tight text-foreground">
+              {{ task.title || "Untitled task" }}
+            </p>
+            <div class="text-sm text-muted-foreground">
               <span v-if="task.project_id">{{
                 props.projectNameById[task.project_id] || "Project"
               }}</span>
@@ -43,11 +73,13 @@ const emit = defineEmits<{
               <span v-if="formatTaskLastDay(task)">Last day {{ formatTaskLastDay(task) }}</span>
             </div>
           </div>
+
+          <!-- Desktop Status Badge -->
           <Badge
             variant="outline"
             :class="[
               statusColors[task.status] || 'bg-muted text-muted-foreground',
-              'shrink-0 text-[10px] sm:text-xs self-start mt-0.5 sm:mt-0',
+              'hidden shrink-0 text-xs self-start mt-0 sm:block',
             ]"
           >
             {{ task.status?.replace("_", " ") || "pending" }}
