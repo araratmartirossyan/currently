@@ -16,6 +16,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import TaskCreateForm from "@/components/task-create/TaskCreateForm.vue";
 import { startOfMonth, endOfMonth, startOfWeek, endOfWeek } from "date-fns";
 import { toast } from "vue-sonner";
+import TaskDragList from "@/components/calendar/TaskDragList.vue";
 
 const calendarStore = useCalendarEventsStore();
 const taskStore = useTaskStore();
@@ -39,6 +40,7 @@ const isImportOpen = ref(false);
 const isCreateMeetingOpen = ref(false);
 const isCreateTaskOpen = ref(false);
 const isCreateChooserOpen = ref(false);
+const isTaskDrawerOpen = ref(false);
 const isCalendarReady = ref(false);
 const meetingSeed = ref(0);
 const taskSeed = ref(0);
@@ -46,6 +48,18 @@ const slotStart = ref<Date | null>(null);
 const slotEnd = ref<Date | null>(null);
 const editingTask = ref<Task | null>(null);
 const editingMeeting = ref<CalendarEvent | null>(null);
+
+const isDraggingTask = useState<boolean>("calendarIsDraggingTask", () => false);
+const droppedTaskId = useState<string | null>("calendarDroppedTaskId", () => null);
+
+const DEFAULT_DRAG_DURATION_MINUTES = 30;
+
+const isTaskDragActive = computed(() => Boolean(isDraggingTask.value));
+
+function openEditTask(task: Task) {
+  editingTask.value = task;
+  editingMeeting.value = null;
+}
 
 const onCalendarEventClick = ({ kind, id }: { kind: "task" | "meeting"; id: string }) => {
   if (!isOwner.value) {
@@ -66,11 +80,55 @@ const onCalendarEventClick = ({ kind, id }: { kind: "task" | "meeting"; id: stri
   editingTask.value = null;
 };
 
-const onCalendarSlotClick = (payload: { date: Date; isAllDay: boolean }) => {
+const onCalendarSlotClick = async (payload: { date: Date; isAllDay: boolean }) => {
   if (!isOwner.value) {
     toast.message("Read-only calendar", {
       description: "Sign in to create meetings or tasks.",
     });
+    return;
+  }
+
+  // If user is dropping a task from the drawer, schedule it immediately.
+  if (droppedTaskId.value) {
+    const taskId = droppedTaskId.value;
+    droppedTaskId.value = null;
+
+    const start = payload.isAllDay
+      ? new Date(
+          payload.date.getFullYear(),
+          payload.date.getMonth(),
+          payload.date.getDate(),
+          9,
+          0,
+          0,
+          0
+        )
+      : payload.date;
+
+    const task = taskStore.tasks.find((t) => t.id === taskId) || null;
+    const existingDurationMs =
+      task?.start_at && task?.end_at
+        ? Math.max(
+            5 * 60 * 1000,
+            new Date(task.end_at).getTime() - new Date(task.start_at).getTime()
+          )
+        : DEFAULT_DRAG_DURATION_MINUTES * 60 * 1000;
+
+    const end = new Date(start.getTime() + existingDurationMs);
+
+    try {
+      await taskStore.updateTaskRemote(taskId, {
+        start_at: start.toISOString(),
+        end_at: end.toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+      toast.success("Task scheduled", {
+        description: `Placed on calendar (${Math.round(existingDurationMs / 60000)} min)`,
+      });
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "Failed to schedule task";
+      toast.error(message);
+    }
     return;
   }
 
@@ -150,6 +208,34 @@ const onCalendarRangeChange = (payload: { startIso: string; endIso: string }) =>
   calendarStore.fetchRange(payload.startIso, payload.endIso);
 };
 
+const onCalendarEventUpdate = async (payload: {
+  kind: "task" | "meeting";
+  originalId: string;
+  startIso: string;
+  endIso: string;
+}) => {
+  if (!isOwner.value) return;
+  if (payload.kind !== "task") return;
+
+  const startMs = new Date(payload.startIso).getTime();
+  const endMs = new Date(payload.endIso).getTime();
+  const safeEndIso =
+    Number.isFinite(startMs) && (!Number.isFinite(endMs) || endMs <= startMs)
+      ? new Date(startMs + DEFAULT_DRAG_DURATION_MINUTES * 60 * 1000).toISOString()
+      : payload.endIso;
+
+  try {
+    await taskStore.updateTaskRemote(payload.originalId, {
+      start_at: payload.startIso,
+      end_at: safeEndIso,
+      updated_at: new Date().toISOString(),
+    });
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : "Failed to reschedule task";
+    toast.error(message);
+  }
+};
+
 onMounted(async () => {
   // preload everything BEFORE mounting calendar (avoids view/recurrence timing issues)
   isCalendarReady.value = false;
@@ -218,6 +304,9 @@ useHead(() => ({ title: title.value }));
         >
           New task
         </Button>
+        <Button v-if="isOwner" variant="outline" class="cursor-pointer" @click="isTaskDrawerOpen = true">
+          Task drawer
+        </Button>
         <Button v-if="!isOwner" as-child variant="outline" class="cursor-pointer">
           <NuxtLink to="/login">Sign in</NuxtLink>
         </Button>
@@ -241,10 +330,38 @@ useHead(() => ({ title: title.value }));
         @range-change="onCalendarRangeChange"
         @event-click="onCalendarEventClick"
         @slot-click="onCalendarSlotClick"
+        @event-update="onCalendarEventUpdate"
       />
     </client-only>
 
     <ImportMeetingsDialog v-if="isOwner" :open="isImportOpen" @close="isImportOpen = false" />
+
+    <!-- Non-modal drawer (Sheet/Dialog blocks pointer events outside) -->
+    <div
+      v-if="isOwner && isTaskDrawerOpen"
+      class="fixed inset-y-0 left-0 z-40 w-[min(420px,100vw)] border-r bg-background shadow-lg transition-opacity"
+      :class="isTaskDragActive ? 'opacity-10 pointer-events-none' : 'opacity-100'"
+    >
+      <div class="flex items-center justify-between gap-2 border-b p-4">
+        <div class="min-w-0">
+          <p class="truncate text-sm font-semibold">Tasks</p>
+          <p class="text-xs text-muted-foreground">
+            Drag onto the calendar (defaults to 30 min)
+          </p>
+        </div>
+        <Button variant="outline" size="sm" class="cursor-pointer" @click="isTaskDrawerOpen = false">
+          Close
+        </Button>
+      </div>
+
+      <div class="h-full overflow-y-auto p-4">
+        <TaskDragList
+          :tasks="filteredTasks"
+          :project-name-by-id="projectNameById"
+          @edit="openEditTask"
+        />
+      </div>
+    </div>
 
     <Sheet v-if="isOwner" v-model:open="isCreateChooserOpen">
       <SheetContent side="right" class="w-full overflow-y-auto sm:max-w-[420px]">

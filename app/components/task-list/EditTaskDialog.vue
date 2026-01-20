@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { TaskPriority, TaskStatus, type Project, type Task } from "@/types";
 import { useTaskForm } from "@/composables/useTaskForm";
+import { isoToDateTimeLocalInput } from "@/helpers/datetime/inputs";
 
 const props = defineProps<{
   open: boolean;
@@ -38,8 +39,8 @@ const initial = computed(() => {
     category: "",
     subcategory: "",
     priority: TaskPriority.MEDIUM,
-    start_at: t?.start_at ? new Date(t.start_at).toISOString().slice(0, 16) : "",
-    end_at: t?.end_at ? new Date(t.end_at).toISOString().slice(0, 16) : "",
+    start_at: t?.start_at ? isoToDateTimeLocalInput(t.start_at) : "",
+    end_at: t?.end_at ? isoToDateTimeLocalInput(t.end_at) : "",
   };
 });
 
@@ -66,8 +67,8 @@ watch(
       description: t.description ?? "",
       status: t.status,
       project_id: t.project_id ?? "none",
-      start_at: t.start_at ? new Date(t.start_at).toISOString().slice(0, 16) : "",
-      end_at: t.end_at ? new Date(t.end_at).toISOString().slice(0, 16) : "",
+      start_at: t.start_at ? isoToDateTimeLocalInput(t.start_at) : "",
+      end_at: t.end_at ? isoToDateTimeLocalInput(t.end_at) : "",
     });
   },
   { immediate: true }

@@ -3390,6 +3390,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@schedule-x/drag-and-drop@npm:^3.7.3":
+  version: 3.7.3
+  resolution: "@schedule-x/drag-and-drop@npm:3.7.3"
+  checksum: 10c0/464017083a6af4d84742cb3919bb2c7824dd8d8dd4b8e17b0aaa57403c51fee7474df4c62245cf32c3a26d297ecf26366c2e03c1b40740d86dbdb89cbd2cc82c
+  languageName: node
+  linkType: hard
+
 "@schedule-x/events-service@npm:^3.6.0":
   version: 3.7.3
   resolution: "@schedule-x/events-service@npm:3.7.3"
@@ -5884,6 +5891,7 @@ __metadata:
     "@preact/signals": "npm:^2.5.1"
     "@schedule-x/calendar": "npm:^3.6.0"
     "@schedule-x/calendar-controls": "npm:^3.6.0"
+    "@schedule-x/drag-and-drop": "npm:^3.7.3"
     "@schedule-x/events-service": "npm:^3.6.0"
     "@schedule-x/ical": "npm:^3.6.0"
     "@schedule-x/theme-default": "npm:^3.6.0"

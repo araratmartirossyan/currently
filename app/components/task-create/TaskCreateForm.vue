@@ -20,6 +20,7 @@ import { useProjectStore } from "@/stores/projects";
 import { useVoiceNote } from "@/composables/useVoiceNote";
 import { useTaskForm } from "@/composables/useTaskForm";
 import type { TaskFormValues } from "@/composables/useTaskForm";
+import { isoToDateTimeLocalInput } from "@/helpers/datetime/inputs";
 
 const props = defineProps<{
   initialStart?: Date | null;
@@ -59,8 +60,8 @@ const {
     const start = props.initialStart;
     const end = props.initialEnd || new Date(start.getTime() + 60 * 60 * 1000);
     return {
-      start_at: new Date(start).toISOString().slice(0, 16),
-      end_at: new Date(end).toISOString().slice(0, 16),
+      start_at: isoToDateTimeLocalInput(new Date(start).toISOString()),
+      end_at: isoToDateTimeLocalInput(new Date(end).toISOString()),
     };
   }).value,
 });
@@ -74,12 +75,12 @@ const dateRange = computed({
   },
   set: ([start, end]) => {
     if (start) {
-      start_at.value = new Date(start).toISOString().slice(0, 16);
+      start_at.value = isoToDateTimeLocalInput(new Date(start).toISOString());
     } else {
       start_at.value = "";
     }
     if (end) {
-      end_at.value = new Date(end).toISOString().slice(0, 16);
+      end_at.value = isoToDateTimeLocalInput(new Date(end).toISOString());
     } else {
       end_at.value = "";
     }

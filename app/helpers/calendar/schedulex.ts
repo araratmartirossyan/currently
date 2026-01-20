@@ -5,6 +5,12 @@ export type ScheduleXRange = { startIso: string; endIso: string };
 
 export type ScheduleXMode = "meetings" | "tasks" | "all";
 
+export type ScheduleXEventOptions = {
+  disableDND?: boolean;
+  disableResize?: boolean;
+  additionalClasses?: string[];
+};
+
 export type ScheduleXEvent = {
   id: string;
   title: string;
@@ -14,6 +20,7 @@ export type ScheduleXEvent = {
   calendarId?: string;
   kind: "task" | "meeting";
   originalId: string;
+  _options?: ScheduleXEventOptions;
 };
 
 export function getUserTimeZone() {
@@ -163,6 +170,7 @@ export function buildScheduleXEvents(args: {
               calendarId: e.project_id || "none",
               kind: "meeting" as const,
               originalId: e.id,
+              _options: { disableDND: true },
             };
           });
         } catch {
@@ -186,6 +194,7 @@ export function buildScheduleXEvents(args: {
           calendarId: e.project_id || "none",
           kind: "meeting" as const,
           originalId: e.id,
+          _options: { disableDND: true },
         },
       ];
     });

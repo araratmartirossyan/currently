@@ -31,10 +31,14 @@ const emit = defineEmits<{
   (e: "rangeChange", payload: { startIso: string; endIso: string }): void;
   (e: "eventClick", payload: { kind: "task" | "meeting"; id: string }): void;
   (e: "slotClick", payload: { date: Date; isAllDay: boolean }): void;
+  (e: "eventUpdate", payload: { kind: "task" | "meeting"; originalId: string; startIso: string; endIso: string }): void;
 }>();
 
 const colorMode = useColorMode();
 const scheduleXThemeClass = computed(() => (colorMode.value === "dark" ? "is-dark" : ""));
+
+const draggedTaskId = useState<string | null>("calendarDraggedTaskId", () => null);
+const droppedTaskId = useState<string | null>("calendarDroppedTaskId", () => null);
 
 const isFullscreen = ref(false);
 const rootEl = ref<HTMLElement | null>(null);
@@ -62,6 +66,7 @@ const { calendarApp, visibleRange, timeZone } = useScheduleXCalendar({
   onRangeChange: (payload) => emit("rangeChange", payload),
   onEventClick: (payload) => emit("eventClick", payload),
   onSlotClick: (payload) => emit("slotClick", payload),
+  onEventUpdate: (payload) => emit("eventUpdate", payload),
 });
 
 const upcomingTimedEventId = computed(() => {
@@ -89,6 +94,56 @@ const upcomingTimedEventId = computed(() => {
 
   return upcoming[0]?.id || null;
 });
+
+function getDraggedTaskIdFromEvent(e: DragEvent): string | null {
+  const dt = e.dataTransfer;
+  // Important: some browsers restrict reading `getData()` until `drop`.
+  // Always prefer our shared state first, then fallback to dataTransfer.
+  if (draggedTaskId.value) return draggedTaskId.value;
+
+  const fromMime = dt?.getData("application/x-currently-task-id") || null;
+  const fromText = dt?.getData("text/plain") || null;
+  return (fromMime || fromText || null)?.trim() || null;
+}
+
+function onCalendarDragOver(e: DragEvent) {
+  // Only allow drop when we're dragging a task from our drawer
+  const hasDraggedTask = Boolean(draggedTaskId.value);
+  const hasType = Boolean(
+    e.dataTransfer?.types?.includes?.("application/x-currently-task-id") ||
+      e.dataTransfer?.types?.includes?.("text/plain")
+  );
+  if (!hasDraggedTask && !hasType) return;
+  e.preventDefault();
+  if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+}
+
+function onCalendarDrop(e: DragEvent) {
+  const taskId = getDraggedTaskIdFromEvent(e);
+  if (!taskId) return;
+
+  e.preventDefault();
+  droppedTaskId.value = taskId;
+  draggedTaskId.value = null;
+
+  // Let Schedule-X compute the slot date/time by simulating a click at the drop position.
+  const target = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
+  const click = new MouseEvent("click", {
+    bubbles: true,
+    cancelable: true,
+    clientX: e.clientX,
+    clientY: e.clientY,
+  });
+
+  // Dispatch on the actual element under cursor; fall back to the calendar root.
+  (target || rootEl.value)?.dispatchEvent(click);
+
+  // If the click didn't land on a slot (e.g. on an existing event), the page won't consume the drop.
+  // Clear it shortly to avoid a later unrelated click scheduling the task unexpectedly.
+  window.setTimeout(() => {
+    if (droppedTaskId.value === taskId) droppedTaskId.value = null;
+  }, 800);
+}
 
 function tryAutoScroll() {
   if (didAutoScroll.value) return;
@@ -144,9 +199,9 @@ watch(
 </script>
 
 <template>
-  <div :class="[wrapperClass, scheduleXThemeClass]">
+  <div :class="[wrapperClass, scheduleXThemeClass]" @dragover="onCalendarDragOver" @drop="onCalendarDrop">
     <div ref="rootEl" class="relative" :class="containerClass">
-      <div v-if="props.fullscreenToggle !== false" class="absolute top-3 right-3 z-[2]">
+      <div v-if="props.fullscreenToggle !== false" class="absolute top-3 right-3 z-2">
         <Button
           variant="outline"
           size="sm"
