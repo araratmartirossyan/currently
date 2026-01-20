@@ -23,19 +23,19 @@ const emit = defineEmits<{
         <div
           v-for="task in upcomingList"
           :key="task.id + '-upcoming'"
-          class="flex cursor-pointer items-center gap-3 px-5 py-4 hover:bg-muted/40"
+          class="flex cursor-pointer items-start gap-2 px-3 py-3 hover:bg-muted/40 sm:gap-3 sm:px-5 sm:py-4"
           @click="emit('edit', task)"
         >
           <Checkbox
-            class="mt-1"
+            class="mt-0.5 sm:mt-1"
             :checked="task.status === 'completed'"
             @update:checked.stop="() => emit('toggle', task)"
           />
           <div class="flex-1">
-            <p class="leading-tight font-medium text-foreground">
+            <p class="text-sm font-medium leading-tight text-foreground sm:text-base">
               {{ task.title || "Untitled task" }}
             </p>
-            <div class="text-sm text-muted-foreground">
+            <div class="text-xs text-muted-foreground sm:text-sm">
               <span v-if="task.project_id">{{
                 props.projectNameById[task.project_id] || "Project"
               }}</span>
@@ -45,7 +45,10 @@ const emit = defineEmits<{
           </div>
           <Badge
             variant="outline"
-            :class="statusColors[task.status] || 'bg-muted text-muted-foreground'"
+            :class="[
+              statusColors[task.status] || 'bg-muted text-muted-foreground',
+              'shrink-0 text-[10px] sm:text-xs self-start mt-0.5 sm:mt-0',
+            ]"
           >
             {{ task.status?.replace("_", " ") || "pending" }}
           </Badge>

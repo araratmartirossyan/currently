@@ -8,8 +8,11 @@ import { useTaskFilters, type DateRangeFilter, type SortOption } from "@/composa
 import { getUpcomingMeetings } from "@/helpers/calendar/display";
 import { TASK_STATUSES, type TaskStatusFilter } from "@/constants/tasks";
 import ProjectsSidebar from "@/components/task-list/ProjectsSidebar.vue";
+import ProjectsCarousel from "@/components/task-list/ProjectsCarousel.vue";
+import MobileFiltersDrawer from "@/components/task-list/MobileFiltersDrawer.vue";
 import TaskListBlock from "@/components/task-list/TaskListBlock.vue";
 import UpcomingEvents from "@/components/task-list/UpcomingEvents.vue";
+import UpcomingEventsDrawer from "@/components/task-list/UpcomingEventsDrawer.vue";
 import UpcomingSection from "@/components/task-list/UpcomingSection.vue";
 import EditTaskDialog from "@/components/task-list/EditTaskDialog.vue";
 import EditMeetingDialog from "@/components/calendar/EditMeetingDialog.vue";
@@ -128,163 +131,216 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="grid h-full min-h-0 grid-cols-1 gap-6 lg:grid-cols-5 lg:grid-rows-1">
-    <div class="h-full min-h-0 lg:col-span-1">
-      <ScrollArea class="h-full pr-1">
-        <ProjectsSidebar
-          :projects="projects"
-          :selected-project-id="taskStore.selectedProjectId"
-          :selected-date-range="selectedDateRange"
-          :upcoming-deadlines="upcomingDeadlines"
-          @select-project="taskStore.setSelectedProject"
-          @select-date="(r) => (selectedDateRange = r)"
-        />
-      </ScrollArea>
+  <div class="flex h-full min-h-0 flex-col gap-4">
+    <!-- Mobile Projects Carousel -->
+    <div class="lg:hidden">
+      <ProjectsCarousel
+        :projects="projects"
+        :selected-project-id="taskStore.selectedProjectId"
+        @select-project="taskStore.setSelectedProject"
+      />
     </div>
 
-    <div class="h-full min-h-0 lg:col-span-3">
-      <ScrollArea class="h-full pr-1">
-        <div class="space-y-6">
-          <div class="flex items-center gap-4">
-            <h2 class="text-3xl font-semibold tracking-tight">Today Task</h2>
-            <Tabs v-model="viewMode" class="w-auto">
-              <TabsList class="bg-muted/40">
-                <TabsTrigger value="list">List</TabsTrigger>
-                <TabsTrigger value="calendar">Calendar</TabsTrigger>
-              </TabsList>
-            </Tabs>
-            <div class="flex items-center gap-3 text-sm text-muted-foreground">
-              <span class="flex items-center gap-1 text-base font-semibold text-foreground">{{
-                filterCounts.all
-              }}</span>
-            </div>
-            <div v-if="viewMode === 'list'" class="ml-auto flex items-center gap-4">
-              <div class="flex items-center gap-2">
-                <span class="text-sm text-muted-foreground">Status:</span>
-                <Select v-model="selectedStatus">
-                  <SelectTrigger class="w-[140px] cursor-pointer">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem
-                      v-for="status in TASK_STATUSES"
-                      :key="status.value"
-                      :value="status.value"
-                      class="cursor-pointer"
-                    >
-                      {{ status.label }}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div class="flex items-center gap-2">
-                <span class="text-sm text-muted-foreground">Sort by:</span>
-                <Select v-model="sortBy">
-                  <SelectTrigger class="w-[140px] cursor-pointer">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="created" class="cursor-pointer">Created Date</SelectItem>
-                    <SelectItem value="date" class="cursor-pointer">Due Date</SelectItem>
-                    <SelectItem value="status" class="cursor-pointer">Status</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
+    <!-- Main Content Grid -->
+    <div class="grid h-full min-h-0 flex-1 grid-cols-1 gap-6 lg:grid-cols-5 lg:grid-rows-1">
+      <!-- Desktop Projects Sidebar -->
+      <div class="hidden h-full min-h-0 lg:col-span-1 lg:block">
+        <ScrollArea class="h-full pr-1">
+          <ProjectsSidebar
+            :projects="projects"
+            :selected-project-id="taskStore.selectedProjectId"
+            :selected-date-range="selectedDateRange"
+            :upcoming-deadlines="upcomingDeadlines"
+            @select-project="taskStore.setSelectedProject"
+            @select-date="(r) => (selectedDateRange = r)"
+          />
+        </ScrollArea>
+      </div>
 
-          <template v-if="viewMode === 'list'">
-            <div
-              v-if="!hasAnyTasks"
-              class="rounded-lg border border-dashed p-10 text-center"
-            >
-              <div class="text-lg font-semibold">No tasks yet</div>
-              <div class="mt-1 text-sm text-muted-foreground">
-                Create your first task to see it here (and on the calendar).
+      <!-- Tasks Content -->
+      <div class="h-full min-h-0 lg:col-span-3">
+        <ScrollArea class="h-full pr-1">
+          <div class="space-y-4">
+            <!-- Header with View Mode and Filters -->
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <div class="flex items-center gap-3">
+                <h2 class="text-2xl font-semibold tracking-tight sm:text-3xl">Today Task</h2>
+                <Tabs v-model="viewMode" class="w-auto">
+                  <TabsList class="bg-muted/40">
+                    <TabsTrigger value="list" class="text-xs sm:text-sm">List</TabsTrigger>
+                    <TabsTrigger value="calendar" class="text-xs sm:text-sm">Calendar</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </div>
+
+              <div class="flex items-center gap-2 sm:ml-auto">
+                <span
+                  class="flex items-center gap-1 text-base font-semibold text-foreground"
+                >
+                  {{ filterCounts.all }}
+                </span>
+
+                <!-- Mobile: Upcoming Events Drawer -->
+                <div class="lg:hidden">
+                  <UpcomingEventsDrawer
+                    v-if="hasAnyTasks"
+                    :tasks="upcomingDeadlines"
+                    :meetings="upcomingMeetings"
+                    :project-name-by-id="projectNameById"
+                    @edit-task="openEdit"
+                    @edit-meeting="openEditMeeting"
+                  />
+                </div>
+
+                <!-- Mobile: Unified Filters Drawer -->
+                <div v-if="viewMode === 'list'" class="lg:hidden">
+                  <MobileFiltersDrawer
+                    :selected-status="selectedStatus"
+                    :sort-by="sortBy"
+                    @update-status="(v) => (selectedStatus = v)"
+                    @update-sort="(v) => (sortBy = v)"
+                  />
+                </div>
+
+                <!-- Desktop: Full Filter/Sort Controls -->
+                <div v-if="viewMode === 'list'" class="hidden items-center gap-4 lg:flex">
+                  <div class="flex items-center gap-2">
+                    <span class="text-sm text-muted-foreground">Status:</span>
+                    <Select v-model="selectedStatus">
+                      <SelectTrigger class="w-[140px] cursor-pointer">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem
+                          v-for="status in TASK_STATUSES"
+                          :key="status.value"
+                          :value="status.value"
+                          class="cursor-pointer"
+                        >
+                          {{ status.label }}
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span class="text-sm text-muted-foreground">Sort by:</span>
+                    <Select v-model="sortBy">
+                      <SelectTrigger class="w-[140px] cursor-pointer">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="created" class="cursor-pointer"
+                          >Created Date</SelectItem
+                        >
+                        <SelectItem value="date" class="cursor-pointer">Due Date</SelectItem>
+                        <SelectItem value="status" class="cursor-pointer">Status</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
               </div>
             </div>
 
-            <Tabs v-else default-value="today" class="w-full">
-              <TabsList class="bg-muted/40">
-                <TabsTrigger value="today">Today</TabsTrigger>
-                <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
-              </TabsList>
+            <!-- List View -->
+            <template v-if="viewMode === 'list'">
+              <!-- Empty State (shown at top when no tasks) -->
+              <div
+                v-if="!hasAnyTasks"
+                class="rounded-lg border border-dashed p-8 text-center sm:p-10"
+              >
+                <div class="text-base font-semibold sm:text-lg">No tasks yet</div>
+                <div class="mt-1 text-xs text-muted-foreground sm:text-sm">
+                  Create your first task to see it here (and on the calendar).
+                </div>
+              </div>
 
-              <TabsContent value="today" class="mt-4">
-                <TaskListBlock
-                  :today-list="todayList"
+              <!-- Tasks Tabs -->
+              <Tabs v-if="hasAnyTasks" default-value="today" class="w-full">
+                <TabsList class="bg-muted/40 w-full sm:w-auto">
+                  <TabsTrigger value="today" class="flex-1 sm:flex-none">Today</TabsTrigger>
+                  <TabsTrigger value="upcoming" class="flex-1 sm:flex-none"
+                    >Upcoming</TabsTrigger
+                  >
+                </TabsList>
+
+                <TabsContent value="today" class="mt-4">
+                  <TaskListBlock
+                    :today-list="todayList"
+                    :upcoming-list="upcomingList"
+                    :status-colors="statusColors"
+                    :project-name-by-id="projectNameById"
+                    @toggle="toggleComplete"
+                    @edit="openEdit"
+                  />
+                </TabsContent>
+
+                <TabsContent value="upcoming" class="mt-4">
+                  <TaskListBlock
+                    :today-list="upcomingList"
+                    :upcoming-list="[]"
+                    :status-colors="statusColors"
+                    :project-name-by-id="projectNameById"
+                    @toggle="toggleComplete"
+                    @edit="openEdit"
+                  />
+                </TabsContent>
+              </Tabs>
+
+              <div v-if="hasAnyTasks" class="space-y-3">
+                <h3 class="text-base font-semibold sm:text-lg">Upcoming Tasks</h3>
+                <UpcomingSection
                   :upcoming-list="upcomingList"
                   :status-colors="statusColors"
                   :project-name-by-id="projectNameById"
                   @toggle="toggleComplete"
                   @edit="openEdit"
                 />
-              </TabsContent>
+              </div>
+            </template>
 
-              <TabsContent value="upcoming" class="mt-4">
-                <TaskListBlock
-                  :today-list="upcomingList"
-                  :upcoming-list="[]"
-                  :status-colors="statusColors"
+            <!-- Calendar View -->
+            <template v-else>
+              <client-only>
+                <ScheduleXCalendarView
+                  mode="tasks"
+                  :meetings="[]"
+                  :tasks="taskStore.filteredTasks"
+                  :project-color-by-id="projectColorById"
                   :project-name-by-id="projectNameById"
-                  @toggle="toggleComplete"
-                  @edit="openEdit"
+                  @range-change="() => {}"
+                  @event-click="
+                    ({ kind, id }) => {
+                      if (kind !== 'task') return;
+                      const t = taskStore.tasks.find((x) => x.id === id);
+                      if (t) openEdit(t);
+                    }
+                  "
                 />
-              </TabsContent>
-            </Tabs>
+              </client-only>
+            </template>
+          </div>
+        </ScrollArea>
+      </div>
 
-            <div v-if="hasAnyTasks" class="space-y-3">
-              <h3 class="text-lg font-semibold">Upcoming Tasks</h3>
-              <UpcomingSection
-                :upcoming-list="upcomingList"
-                :status-colors="statusColors"
-                :project-name-by-id="projectNameById"
-                @toggle="toggleComplete"
-                @edit="openEdit"
-              />
-            </div>
-          </template>
-
-          <template v-else>
-            <client-only>
-              <ScheduleXCalendarView
-                mode="tasks"
-                :meetings="[]"
-                :tasks="taskStore.filteredTasks"
-                :project-color-by-id="projectColorById"
-                :project-name-by-id="projectNameById"
-                @range-change="() => {}"
-                @event-click="
-                  ({ kind, id }) => {
-                    if (kind !== 'task') return;
-                    const t = taskStore.tasks.find((x) => x.id === id);
-                    if (t) openEdit(t);
-                  }
-                "
-              />
-            </client-only>
-          </template>
-        </div>
-      </ScrollArea>
-    </div>
-
-    <div class="h-full min-h-0 lg:col-span-1">
-      <ScrollArea class="h-full pr-1">
-        <div
-          v-if="!hasAnyTasks"
-          class="rounded-lg border border-dashed p-6 text-sm text-muted-foreground"
-        >
-          No upcoming events yet.
-        </div>
-        <UpcomingEvents
-          v-else
-          :tasks="upcomingDeadlines"
-          :meetings="upcomingMeetings"
-          :project-name-by-id="projectNameById"
-          @edit-task="openEdit"
-          @edit-meeting="openEditMeeting"
-        />
-      </ScrollArea>
+      <!-- Desktop Upcoming Events Sidebar -->
+      <div class="hidden h-full min-h-0 lg:col-span-1 lg:block">
+        <ScrollArea class="h-full pr-1">
+          <div
+            v-if="!hasAnyTasks"
+            class="rounded-lg border border-dashed p-6 text-sm text-muted-foreground"
+          >
+            No upcoming events yet.
+          </div>
+          <UpcomingEvents
+            v-else
+            :tasks="upcomingDeadlines"
+            :meetings="upcomingMeetings"
+            :project-name-by-id="projectNameById"
+            @edit-task="openEdit"
+            @edit-meeting="openEditMeeting"
+          />
+        </ScrollArea>
+      </div>
     </div>
   </div>
 

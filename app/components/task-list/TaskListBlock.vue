@@ -24,37 +24,40 @@ const emit = defineEmits<{
         <div
           v-for="task in todayList"
           :key="task.id"
-          class="hover:bg-muted/40 flex cursor-pointer items-center gap-3 px-5 py-4"
+          class="hover:bg-muted/40 flex cursor-pointer items-start gap-2 px-3 py-3 sm:gap-3 sm:px-5 sm:py-4"
           @click="emit('edit', task)"
         >
           <Checkbox
-            class="mt-1"
+            class="mt-0.5 sm:mt-1"
             :checked="task.status === 'completed'"
             @update:checked.stop="() => emit('toggle', task)"
           />
-          <div class="flex-1 space-y-1">
-            <div class="flex items-center gap-2">
-              <p class="text-foreground leading-tight font-medium">
+          <div class="flex-1 space-y-0.5 sm:space-y-1">
+            <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
+              <p class="text-foreground text-sm font-medium leading-tight sm:text-base">
                 {{ task.title || "Untitled task" }}
               </p>
               <Badge
                 v-if="task.project_id"
                 variant="outline"
-                class="border-slate-200 text-slate-500"
+                class="border-slate-200 text-slate-500 shrink-0 text-[10px] sm:text-xs"
               >
                 {{ props.projectNameById[task.project_id] || "Project" }}
               </Badge>
             </div>
-            <p class="line-clamp-2 text-sm text-slate-500">
+            <p class="line-clamp-2 text-xs text-slate-500 sm:text-sm">
               {{ task.description || "No description provided." }}
             </p>
-            <p v-if="formatTaskLastDay(task)" class="text-xs text-slate-400">
+            <p v-if="formatTaskLastDay(task)" class="text-[10px] text-slate-400 sm:text-xs">
               Last day: {{ formatTaskLastDay(task) }}
             </p>
           </div>
           <Badge
             variant="outline"
-            :class="statusColors[task.status] || 'border-slate-200 bg-slate-100 text-slate-600'"
+            :class="[
+              statusColors[task.status] || 'border-slate-200 bg-slate-100 text-slate-600',
+              'shrink-0 text-[10px] sm:text-xs self-start mt-0.5 sm:mt-0',
+            ]"
           >
             {{ task.status?.replace("_", " ") || "pending" }}
           </Badge>
