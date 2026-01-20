@@ -16,6 +16,7 @@ import UpcomingEventsDrawer from "@/components/task-list/UpcomingEventsDrawer.vu
 import UpcomingSection from "@/components/task-list/UpcomingSection.vue";
 import EditTaskDialog from "@/components/task-list/EditTaskDialog.vue";
 import EditMeetingDialog from "@/components/calendar/EditMeetingDialog.vue";
+import DayCalendarView from "@/components/calendar/DayCalendarView.vue";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -49,7 +50,7 @@ const selectedDateRange = ref<DateRangeFilter>("all");
 const selectedStatus = ref<TaskStatusFilter>("all");
 const sortBy = ref<SortOption>("created");
 
-const { todayList, upcomingList, upcomingDeadlines, filterCounts } = useTaskFilters({
+const { filteredTasks: allFilteredTasks, todayList, upcomingList, upcomingDeadlines, filterCounts } = useTaskFilters({
   tasks: filteredTasks,
   selectedProjectId: computed(() => taskStore.selectedProjectId),
   selectedDateRange,
@@ -142,18 +143,34 @@ onMounted(async () => {
     </div>
 
     <!-- Main Content Grid -->
-    <div class="grid h-full min-h-0 flex-1 grid-cols-1 gap-6 lg:grid-cols-5 lg:grid-rows-1">
-      <!-- Desktop Projects Sidebar -->
+    <div class="grid h-full min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-5 lg:grid-rows-1">
+      <!-- Left: Projects + Upcoming Events (Desktop) -->
       <div class="hidden h-full min-h-0 lg:col-span-1 lg:block">
         <ScrollArea class="h-full pr-1">
-          <ProjectsSidebar
-            :projects="projects"
-            :selected-project-id="taskStore.selectedProjectId"
-            :selected-date-range="selectedDateRange"
-            :upcoming-deadlines="upcomingDeadlines"
-            @select-project="taskStore.setSelectedProject"
-            @select-date="(r) => (selectedDateRange = r)"
-          />
+          <div class="space-y-4">
+            <!-- Projects Section -->
+            <ProjectsSidebar
+              :projects="projects"
+              :selected-project-id="taskStore.selectedProjectId"
+              :selected-date-range="selectedDateRange"
+              :upcoming-deadlines="upcomingDeadlines"
+              @select-project="taskStore.setSelectedProject"
+              @select-date="(r) => (selectedDateRange = r)"
+            />
+            
+            <!-- Upcoming Events Section -->
+            <div v-if="!hasAnyTasks" class="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
+              No upcoming events yet.
+            </div>
+            <UpcomingEvents
+              v-else
+              :tasks="upcomingDeadlines"
+              :meetings="upcomingMeetings"
+              :project-name-by-id="projectNameById"
+              @edit-task="openEdit"
+              @edit-meeting="openEditMeeting"
+            />
+          </div>
         </ScrollArea>
       </div>
 
@@ -255,18 +272,30 @@ onMounted(async () => {
               </div>
 
               <!-- Tasks Tabs -->
-              <Tabs v-if="hasAnyTasks" default-value="today" class="w-full">
+              <Tabs v-if="hasAnyTasks" default-value="all" class="w-full">
                 <TabsList class="bg-muted/40 w-full sm:w-auto">
+                  <TabsTrigger value="all" class="flex-1 sm:flex-none">All</TabsTrigger>
                   <TabsTrigger value="today" class="flex-1 sm:flex-none">Today</TabsTrigger>
                   <TabsTrigger value="upcoming" class="flex-1 sm:flex-none"
                     >Upcoming</TabsTrigger
                   >
                 </TabsList>
 
+                <TabsContent value="all" class="mt-4">
+                  <TaskListBlock
+                    :today-list="allFilteredTasks"
+                    :upcoming-list="[]"
+                    :status-colors="statusColors"
+                    :project-name-by-id="projectNameById"
+                    @toggle="toggleComplete"
+                    @edit="openEdit"
+                  />
+                </TabsContent>
+
                 <TabsContent value="today" class="mt-4">
                   <TaskListBlock
                     :today-list="todayList"
-                    :upcoming-list="upcomingList"
+                    :upcoming-list="[]"
                     :status-colors="statusColors"
                     :project-name-by-id="projectNameById"
                     @toggle="toggleComplete"
@@ -322,24 +351,16 @@ onMounted(async () => {
         </ScrollArea>
       </div>
 
-      <!-- Desktop Upcoming Events Sidebar -->
+      <!-- Right: Day Calendar View (Desktop) -->
       <div class="hidden h-full min-h-0 lg:col-span-1 lg:block">
-        <ScrollArea class="h-full pr-1">
-          <div
-            v-if="!hasAnyTasks"
-            class="rounded-lg border border-dashed p-6 text-sm text-muted-foreground"
-          >
-            No upcoming events yet.
-          </div>
-          <UpcomingEvents
-            v-else
-            :tasks="upcomingDeadlines"
-            :meetings="upcomingMeetings"
-            :project-name-by-id="projectNameById"
-            @edit-task="openEdit"
-            @edit-meeting="openEditMeeting"
-          />
-        </ScrollArea>
+        <DayCalendarView
+          :tasks="taskStore.filteredTasks"
+          :meetings="calendarEvents"
+          :project-name-by-id="projectNameById"
+          :status-colors="statusColors"
+          @edit-task="openEdit"
+          @edit-meeting="openEditMeeting"
+        />
       </div>
     </div>
   </div>
