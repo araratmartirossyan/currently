@@ -56,6 +56,14 @@ const DEFAULT_DRAG_DURATION_MINUTES = 30;
 
 const isTaskDragActive = computed(() => Boolean(isDraggingTask.value));
 
+// Drawer should only show tasks not already visible on calendar.
+// In this app tasks show on calendar when they have a time block or a deadline.
+const drawerTasks = computed(() => {
+  return filteredTasks.value.filter((t) => !(t.start_at && t.end_at) && !t.deadline);
+});
+
+type TaskDragAction = "delete" | "unschedule";
+
 function openEditTask(task: Task) {
   editingTask.value = task;
   editingMeeting.value = null;
@@ -236,6 +244,30 @@ const onCalendarEventUpdate = async (payload: {
   }
 };
 
+const onCalendarTaskDragAction = async (payload: { action: TaskDragAction; taskId: string }) => {
+  if (!isOwner.value) return;
+
+  try {
+    if (payload.action === "delete") {
+      await taskStore.deleteTaskRemote(payload.taskId);
+      toast.success("Task deleted");
+      if (editingTask.value?.id === payload.taskId) editingTask.value = null;
+      return;
+    }
+
+    // unschedule
+    await taskStore.updateTaskRemote(payload.taskId, {
+      start_at: null,
+      end_at: null,
+      updated_at: new Date().toISOString(),
+    });
+    toast.success("Removed from calendar");
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : "Failed to apply action";
+    toast.error(message);
+  }
+};
+
 onMounted(async () => {
   // preload everything BEFORE mounting calendar (avoids view/recurrence timing issues)
   isCalendarReady.value = false;
@@ -331,6 +363,7 @@ useHead(() => ({ title: title.value }));
         @event-click="onCalendarEventClick"
         @slot-click="onCalendarSlotClick"
         @event-update="onCalendarEventUpdate"
+        @task-drag-action="onCalendarTaskDragAction"
       />
     </client-only>
 
@@ -356,7 +389,7 @@ useHead(() => ({ title: title.value }));
 
       <div class="h-full overflow-y-auto p-4">
         <TaskDragList
-          :tasks="filteredTasks"
+          :tasks="drawerTasks"
           :project-name-by-id="projectNameById"
           @edit="openEditTask"
         />

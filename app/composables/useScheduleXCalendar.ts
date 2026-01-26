@@ -36,6 +36,10 @@ export function useScheduleXCalendar(args: {
     endIso: string;
   }) => void;
 }) {
+  const calendarTaskDragZone = useState<"none" | "delete" | "unschedule">(
+    "calendarTaskDragZone",
+    () => "none"
+  );
   const timeZone = getUserTimeZone();
   // Fallback range so recurring events appear even if a view doesn't fire onRangeUpdate immediately
   const visibleRange = ref<ScheduleXRange | null>({
@@ -207,12 +211,16 @@ export function useScheduleXCalendar(args: {
         args.onEventClick({ kind, id: originalId });
       },
       onBeforeEventUpdate(oldEvent: unknown, newEvent: unknown) {
+        // If user is dropping into an action zone (delete/unschedule), prevent Schedule-X from moving the event.
+        if (calendarTaskDragZone.value !== "none") return false;
         // Only allow drag-and-drop for tasks
         const kind = inferKind(oldEvent) || inferKind(newEvent);
         return kind === "task";
       },
       onEventUpdate(updatedEvent: unknown) {
         if (!args.onEventUpdate) return;
+        // If user triggered an action zone, ignore event updates.
+        if (calendarTaskDragZone.value !== "none") return;
         const kind = inferKind(updatedEvent);
         if (!kind) return;
         if (kind !== "task") return;

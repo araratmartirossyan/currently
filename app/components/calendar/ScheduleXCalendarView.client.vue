@@ -32,6 +32,7 @@ const emit = defineEmits<{
   (e: "eventClick", payload: { kind: "task" | "meeting"; id: string }): void;
   (e: "slotClick", payload: { date: Date; isAllDay: boolean }): void;
   (e: "eventUpdate", payload: { kind: "task" | "meeting"; originalId: string; startIso: string; endIso: string }): void;
+  (e: "taskDragAction", payload: { action: "delete" | "unschedule"; taskId: string }): void;
 }>();
 
 const colorMode = useColorMode();
@@ -39,6 +40,13 @@ const scheduleXThemeClass = computed(() => (colorMode.value === "dark" ? "is-dar
 
 const draggedTaskId = useState<string | null>("calendarDraggedTaskId", () => null);
 const droppedTaskId = useState<string | null>("calendarDroppedTaskId", () => null);
+const isDraggingTask = useState<boolean>("calendarIsDraggingTask", () => false);
+
+const calendarTaskDragTaskId = useState<string | null>("calendarTaskDragTaskId", () => null);
+const calendarTaskDragZone = useState<"none" | "delete" | "unschedule">(
+  "calendarTaskDragZone",
+  () => "none"
+);
 
 const isFullscreen = ref(false);
 const rootEl = ref<HTMLElement | null>(null);
@@ -145,6 +153,60 @@ function onCalendarDrop(e: DragEvent) {
   }, 800);
 }
 
+function getTaskIdFromEventTarget(target: EventTarget | null): string | null {
+  const el = target instanceof Element ? target : null;
+  const eventEl = el?.closest?.("[data-event-id]") as HTMLElement | null;
+  const rawId = eventEl?.getAttribute("data-event-id") || "";
+  if (!rawId.startsWith("t-")) return null;
+  return rawId.slice(2) || null;
+}
+
+function onCalendarPointerDownCapture(e: PointerEvent) {
+  // Start showing top overlay only for task events dragged inside calendar
+  const taskId = getTaskIdFromEventTarget(e.target);
+  if (!taskId) return;
+  calendarTaskDragTaskId.value = taskId;
+  calendarTaskDragZone.value = "none";
+}
+
+function onDragZoneEnter(zone: "delete" | "unschedule") {
+  calendarTaskDragZone.value = zone;
+}
+
+function onDragZoneLeave() {
+  calendarTaskDragZone.value = "none";
+}
+
+function clearCalendarDragOverlaySoon() {
+  // Defer to let Schedule-X run its internal pointerup handlers first.
+  window.setTimeout(() => {
+    calendarTaskDragZone.value = "none";
+    calendarTaskDragTaskId.value = null;
+  }, 50);
+}
+
+function onWindowPointerUp() {
+  const taskId = calendarTaskDragTaskId.value;
+  const zone = calendarTaskDragZone.value;
+  if (taskId && (zone === "delete" || zone === "unschedule")) {
+    emit("taskDragAction", { action: zone, taskId });
+  }
+  clearCalendarDragOverlaySoon();
+}
+
+onMounted(() => {
+  window.addEventListener("pointerup", onWindowPointerUp);
+});
+
+watch(
+  () => calendarTaskDragTaskId.value,
+  (next, prev) => {
+    // If user starts dragging a calendar task, also ghost the drawer if it's open
+    if (next && !prev) isDraggingTask.value = true;
+    if (!next && prev) isDraggingTask.value = false;
+  }
+);
+
 function tryAutoScroll() {
   if (didAutoScroll.value) return;
   const root = rootEl.value;
@@ -199,7 +261,34 @@ watch(
 </script>
 
 <template>
-  <div :class="[wrapperClass, scheduleXThemeClass]" @dragover="onCalendarDragOver" @drop="onCalendarDrop">
+  <div
+    :class="[wrapperClass, scheduleXThemeClass]"
+    @dragover="onCalendarDragOver"
+    @drop="onCalendarDrop"
+    @pointerdown.capture="onCalendarPointerDownCapture"
+  >
+    <!-- Drag action zones (visible when dragging a task event inside calendar) -->
+    <div
+      v-if="calendarTaskDragTaskId"
+      class="fixed left-1/2 top-3 z-210 flex -translate-x-1/2 gap-3"
+    >
+      <div
+        class="rounded-md border bg-background/90 px-4 py-2 text-sm font-medium shadow-sm"
+        :class="calendarTaskDragZone === 'delete' ? 'border-destructive text-destructive' : ''"
+        @pointerenter="onDragZoneEnter('delete')"
+        @pointerleave="onDragZoneLeave"
+      >
+        Delete task
+      </div>
+      <div
+        class="rounded-md border bg-background/90 px-4 py-2 text-sm font-medium shadow-sm"
+        :class="calendarTaskDragZone === 'unschedule' ? 'border-primary text-primary' : ''"
+        @pointerenter="onDragZoneEnter('unschedule')"
+        @pointerleave="onDragZoneLeave"
+      >
+        Remove from calendar
+      </div>
+    </div>
     <div ref="rootEl" class="relative" :class="containerClass">
       <div v-if="props.fullscreenToggle !== false" class="absolute top-3 right-3 z-2">
         <Button
