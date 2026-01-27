@@ -63,3 +63,11 @@ export interface CalendarEvent {
   created_at: string;
   updated_at: string;
 }
+
+export interface ShoppingListItem {
+  id: string;
+  text: string;
+  checked: boolean;
+  created_at: string;
+  checked_at: string | null;
+}

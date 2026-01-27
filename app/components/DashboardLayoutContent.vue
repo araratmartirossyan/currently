@@ -18,6 +18,7 @@ import {
   CalendarDays,
   FolderKanban,
   Settings,
+  ShoppingCart,
   LogOut,
   BadgeCheck,
   GalleryVerticalEnd,
@@ -88,6 +89,11 @@ const navItems = computed(() => {
       title: "Calendar",
       url: "/calendar",
       icon: CalendarDays,
+    },
+    {
+      title: "Shopping",
+      url: "/shopping-list",
+      icon: ShoppingCart,
     },
     {
       title: "Projects",
