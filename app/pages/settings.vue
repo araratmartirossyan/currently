@@ -2,9 +2,14 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { useTheme } from "@/composables/useTheme";
 
-const { theme, setTheme } = useTheme();
+type ColorModePreference = "light" | "dark" | "system";
+
+const colorMode = useColorMode();
+
+function setTheme(next: ColorModePreference) {
+  colorMode.preference = next;
+}
 </script>
 
 <template>
@@ -34,7 +39,7 @@ const { theme, setTheme } = useTheme();
                 variant="outline"
                 size="sm"
                 class="cursor-pointer"
-                :disabled="theme === 'light'"
+                :disabled="colorMode.preference === 'light'"
                 @click="setTheme('light')"
               >
                 Light
@@ -43,10 +48,19 @@ const { theme, setTheme } = useTheme();
                 variant="outline"
                 size="sm"
                 class="cursor-pointer"
-                :disabled="theme === 'dark'"
+                :disabled="colorMode.preference === 'dark'"
                 @click="setTheme('dark')"
               >
                 Dark
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                class="cursor-pointer"
+                :disabled="colorMode.preference === 'system'"
+                @click="setTheme('system')"
+              >
+                Auto
               </Button>
             </div>
           </div>

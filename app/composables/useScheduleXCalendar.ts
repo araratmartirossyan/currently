@@ -8,17 +8,19 @@ import {
 } from "@schedule-x/calendar";
 import { createEventsServicePlugin } from "@schedule-x/events-service";
 import { createCalendarControlsPlugin } from "@schedule-x/calendar-controls";
+import { createDragAndDropPlugin } from "@schedule-x/drag-and-drop";
 import type { CalendarEvent, Task } from "@/types";
 import {
   buildScheduleXEvents,
   getUserTimeZone,
   rangePartToIso,
+  type ScheduleXMode,
   type ScheduleXEvent,
   type ScheduleXRange,
 } from "@/helpers/calendar/schedulex";
 
 export function useScheduleXCalendar(args: {
-  mode: () => "meetings" | "tasks";
+  mode: () => ScheduleXMode;
   meetings: () => CalendarEvent[];
   tasks: () => Task[];
   projectColorById?: () => Record<string, string | null | undefined>;
@@ -27,7 +29,17 @@ export function useScheduleXCalendar(args: {
   onRangeChange: (payload: ScheduleXRange) => void;
   onEventClick: (payload: { kind: "task" | "meeting"; id: string }) => void;
   onSlotClick?: (payload: { date: Date; isAllDay: boolean }) => void;
+  onEventUpdate?: (payload: {
+    kind: "task" | "meeting";
+    originalId: string;
+    startIso: string;
+    endIso: string;
+  }) => void;
 }) {
+  const calendarTaskDragZone = useState<"none" | "delete" | "unschedule">(
+    "calendarTaskDragZone",
+    () => "none"
+  );
   const timeZone = getUserTimeZone();
   // Fallback range so recurring events appear even if a view doesn't fire onRangeUpdate immediately
   const visibleRange = ref<ScheduleXRange | null>({
@@ -37,6 +49,7 @@ export function useScheduleXCalendar(args: {
 
   const eventsService = createEventsServicePlugin();
   const calendarControls = createCalendarControlsPlugin();
+  const dragAndDrop = createDragAndDropPlugin(30);
 
   type CalendarControls = {
     setView?: (viewName: string) => void;
@@ -44,6 +57,31 @@ export function useScheduleXCalendar(args: {
   };
 
   const controls = calendarControls as unknown as CalendarControls;
+
+  function inferKind(e: unknown): "task" | "meeting" | null {
+    if (typeof e !== "object" || e === null) return null;
+    const rec = e as Record<string, unknown>;
+    const kind = rec.kind;
+    if (kind === "task" || kind === "meeting") return kind;
+    const id = rec.id;
+    const idStr = typeof id === "string" || typeof id === "number" ? String(id) : "";
+    if (idStr.startsWith("t-")) return "task";
+    if (idStr.startsWith("m-")) return "meeting";
+    return null;
+  }
+
+  function inferOriginalId(e: unknown, kind: "task" | "meeting"): string {
+    if (typeof e === "object" && e !== null) {
+      const rec = e as Record<string, unknown>;
+      if (typeof rec.originalId === "string") return rec.originalId;
+      if (kind === "task" && typeof rec.id !== "undefined") {
+        const idStr = String(rec.id);
+        return idStr.startsWith("t-") ? idStr.slice(2) : idStr;
+      }
+      if (typeof rec.id !== "undefined") return String(rec.id);
+    }
+    return "";
+  }
 
   function startOfDayIso(date: Temporal.PlainDate) {
     return date
@@ -136,6 +174,67 @@ export function useScheduleXCalendar(args: {
     })
   );
 
+  function buildCalendarCallbacks() {
+    return {
+      onRangeUpdate(range: { start: unknown; end: unknown }) {
+        const startIso = rangePartToIso(range.start);
+        const endIso = rangePartToIso(range.end);
+        const payload = { startIso, endIso };
+        visibleRange.value = payload;
+        args.onRangeChange(payload);
+      },
+      onSelectedDateUpdate(date: Temporal.PlainDate) {
+        updateRangeAroundSelectedDate(date);
+      },
+      onClickDateTime(dateTime: unknown) {
+        if (!args.onSlotClick) return;
+        const iso = rangePartToIso(dateTime);
+        args.onSlotClick({ date: new Date(iso), isAllDay: false });
+      },
+      onClickDate(date: unknown) {
+        if (!args.onSlotClick) return;
+        const iso = rangePartToIso(date);
+        args.onSlotClick({ date: new Date(iso), isAllDay: true });
+      },
+      onClickAgendaDate(date: unknown) {
+        if (!args.onSlotClick) return;
+        const iso = rangePartToIso(date);
+        args.onSlotClick({ date: new Date(iso), isAllDay: true });
+      },
+      onEventClick(calendarEvent: unknown) {
+        if (typeof calendarEvent !== "object" || calendarEvent === null) return;
+        const e = calendarEvent as Record<string, unknown>;
+        const kind = e.kind;
+        const originalId = e.originalId;
+        if (kind !== "task" && kind !== "meeting") return;
+        if (typeof originalId !== "string") return;
+        args.onEventClick({ kind, id: originalId });
+      },
+      onBeforeEventUpdate(oldEvent: unknown, newEvent: unknown) {
+        // If user is dropping into an action zone (delete/unschedule), prevent Schedule-X from moving the event.
+        if (calendarTaskDragZone.value !== "none") return false;
+        // Only allow drag-and-drop for tasks
+        const kind = inferKind(oldEvent) || inferKind(newEvent);
+        return kind === "task";
+      },
+      onEventUpdate(updatedEvent: unknown) {
+        if (!args.onEventUpdate) return;
+        // If user triggered an action zone, ignore event updates.
+        if (calendarTaskDragZone.value !== "none") return;
+        const kind = inferKind(updatedEvent);
+        if (!kind) return;
+        if (kind !== "task") return;
+        if (typeof updatedEvent !== "object" || updatedEvent === null) return;
+        const rec = updatedEvent as Record<string, unknown>;
+        const startIso = rangePartToIso(rec.start);
+        const endIso = rangePartToIso(rec.end);
+        const originalId = inferOriginalId(updatedEvent, kind);
+        if (!originalId) return;
+        args.onEventUpdate({ kind, originalId, startIso, endIso });
+      },
+    };
+  }
+
   const calendarApp = shallowRef(
     createCalendar({
       selectedDate: Temporal.Now.plainDateISO(timeZone),
@@ -144,43 +243,8 @@ export function useScheduleXCalendar(args: {
       views: [createViewMonthGrid(), createViewWeek(), createViewDay(), createViewMonthAgenda()],
       calendars: calendars.value,
       events: sxEvents.value, // Fixed: use properly typed computed array
-      callbacks: {
-        onRangeUpdate(range: { start: unknown; end: unknown }) {
-          const startIso = rangePartToIso(range.start);
-          const endIso = rangePartToIso(range.end);
-          const payload = { startIso, endIso };
-          visibleRange.value = payload;
-          args.onRangeChange(payload);
-        },
-        onSelectedDateUpdate(date: Temporal.PlainDate) {
-          updateRangeAroundSelectedDate(date);
-        },
-        onClickDateTime(dateTime: unknown) {
-          if (!args.onSlotClick) return;
-          const iso = rangePartToIso(dateTime);
-          args.onSlotClick({ date: new Date(iso), isAllDay: false });
-        },
-        onClickDate(date: unknown) {
-          if (!args.onSlotClick) return;
-          const iso = rangePartToIso(date);
-          args.onSlotClick({ date: new Date(iso), isAllDay: true });
-        },
-        onClickAgendaDate(date: unknown) {
-          if (!args.onSlotClick) return;
-          const iso = rangePartToIso(date);
-          args.onSlotClick({ date: new Date(iso), isAllDay: true });
-        },
-        onEventClick(calendarEvent: unknown) {
-          if (typeof calendarEvent !== "object" || calendarEvent === null) return;
-          const e = calendarEvent as Record<string, unknown>;
-          const kind = e.kind;
-          const originalId = e.originalId;
-          if (kind !== "task" && kind !== "meeting") return;
-          if (typeof originalId !== "string") return;
-          args.onEventClick({ kind, id: originalId });
-        },
-      },
-      plugins: [eventsService, calendarControls],
+      callbacks: buildCalendarCallbacks(),
+      plugins: [eventsService, calendarControls, dragAndDrop],
     })
   );
 
@@ -202,43 +266,8 @@ export function useScheduleXCalendar(args: {
         views: [createViewMonthGrid(), createViewWeek(), createViewDay(), createViewMonthAgenda()],
         calendars: next,
         events: sxEvents.value,
-        callbacks: {
-          onRangeUpdate(range: { start: unknown; end: unknown }) {
-            const startIso = rangePartToIso(range.start);
-            const endIso = rangePartToIso(range.end);
-            const payload = { startIso, endIso };
-            visibleRange.value = payload;
-            args.onRangeChange(payload);
-          },
-          onSelectedDateUpdate(date: Temporal.PlainDate) {
-            updateRangeAroundSelectedDate(date);
-          },
-          onClickDateTime(dateTime: unknown) {
-            if (!args.onSlotClick) return;
-            const iso = rangePartToIso(dateTime);
-            args.onSlotClick({ date: new Date(iso), isAllDay: false });
-          },
-          onClickDate(date: unknown) {
-            if (!args.onSlotClick) return;
-            const iso = rangePartToIso(date);
-            args.onSlotClick({ date: new Date(iso), isAllDay: true });
-          },
-          onClickAgendaDate(date: unknown) {
-            if (!args.onSlotClick) return;
-            const iso = rangePartToIso(date);
-            args.onSlotClick({ date: new Date(iso), isAllDay: true });
-          },
-          onEventClick(calendarEvent: unknown) {
-            if (typeof calendarEvent !== "object" || calendarEvent === null) return;
-            const e = calendarEvent as Record<string, unknown>;
-            const kind = e.kind;
-            const originalId = e.originalId;
-            if (kind !== "task" && kind !== "meeting") return;
-            if (typeof originalId !== "string") return;
-            args.onEventClick({ kind, id: originalId });
-          },
-        },
-        plugins: [eventsService, calendarControls],
+        callbacks: buildCalendarCallbacks(),
+        plugins: [eventsService, calendarControls, dragAndDrop],
       });
 
       // restore view or force month grid

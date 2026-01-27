@@ -23,6 +23,7 @@
     "@preact/signals": "^2.5.1",
     "@schedule-x/calendar": "^3.6.0",
     "@schedule-x/calendar-controls": "^3.6.0",
+    "@schedule-x/drag-and-drop": "^3.7.3",
     "@schedule-x/events-service": "^3.6.0",
     "@schedule-x/ical": "^3.6.0",
     "@schedule-x/theme-default": "^3.6.0",

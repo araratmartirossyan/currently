@@ -29,7 +29,7 @@ const emit = defineEmits<{
           <Checkbox
             class="mt-0.5 sm:mt-1"
             :checked="task.status === 'completed'"
-            @update:checked.stop="() => emit('toggle', task)"
+            @update:checked="() => emit('toggle', task)"
           />
           
           <!-- Mobile Layout -->
